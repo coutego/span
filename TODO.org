@@ -87,7 +87,7 @@ ORG-CHRONOS  ::  Tuesday, November 25, 2025
    20:58 -  ...    Foobar
    #+end_quote
 
-* TODO Feature: make 'refresh' refresh the titles of the tasks
+* DONE Feature: make 'refresh' refresh the titles of the tasks
 Then a title of a heading changes, make the dashboard to also change it when
 refreshing. If this is potentially slow, add a second refresh command ("Hard refresh"?)
 that does this. Perhaps the shortcut might be 'R'?

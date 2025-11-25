@@ -1,5 +1,6 @@
 ;;; org-chronos-lookup.el --- Fast search for Chronos IDs -*- lexical-binding: t; -*-
 
+(require 'org)
 (require 'org-chronos-core)
 (require 'f)
 
@@ -63,5 +64,14 @@ Checks: 1. Runtime Cache, 2. Git Grep / Grep."
           (org-reveal)
           (org-back-to-heading))
       (message "Org-Chronos: ID %s not found." uuid))))
+
+(defun org-chronos-get-title-by-id (uuid)
+  "Return the current heading title for UUID, or nil if not found."
+  (let ((marker (org-chronos-find-id uuid)))
+    (when marker
+      (with-current-buffer (marker-buffer marker)
+        (save-excursion
+          (goto-char marker)
+          (org-get-heading t t t t))))))
 
 (provide 'org-chronos-lookup)

@@ -42,6 +42,7 @@
     (define-key map (kbd "q") 'org-chronos-quit)
     (define-key map (kbd "RET") 'org-chronos-visit-entry)
     (define-key map (kbd "r") 'org-chronos-status)
+    (define-key map (kbd "R") 'org-chronos-hard-refresh)
     ;; Controller Actions (Direct Binding)
     (define-key map (kbd "c") 'org-chronos-clock-in)
     (define-key map (kbd "o") 'org-chronos-clock-out)
@@ -65,6 +66,7 @@
     (kbd "i") 'org-chronos-interruption
     (kbd "t") 'org-chronos-tick
     (kbd "r") 'org-chronos-status
+    (kbd "R") 'org-chronos-hard-refresh
     (kbd "RET") 'org-chronos-visit-entry
     (kbd "q") 'org-chronos-quit))
 
@@ -90,6 +92,8 @@
     (insert (propertize "[t]" 'face 'org-chronos-key-face) " Tick")
     (insert sep)
     (insert (propertize "[r]" 'face 'org-chronos-key-face) " Refresh")
+    (insert sep)
+    (insert (propertize "[R]" 'face 'org-chronos-key-face) " Hard Refresh")
     (insert sep)
     (insert (propertize "[q]" 'face 'org-chronos-key-face) " Quit")
     (insert "\n\n")))
@@ -146,10 +150,35 @@
 ;; Main Render Function
 ;; -----------------------------------------------------------------------------
 
-(defun org-chronos-render-dashboard ()
-  "Draw the dashboard content."
+(defun org-chronos-render-dashboard (&optional update-titles)
+  "Draw the dashboard content.
+If UPDATE-TITLES is non-nil, look up current headings for IDs."
   (let ((inhibit-read-only t)
         (day-data (org-chronos-compute-day))) ; Defaults to today
+
+    ;; Optional: Update titles in memory
+    (when update-titles
+      (message "Org-Chronos: Updating titles...")
+      ;; Update intervals
+      (dolist (int (plist-get day-data :intervals))
+        (let* ((payload (org-chronos-interval-payload int))
+               (uuid (plist-get payload :chronos-id)))
+          (when uuid
+            (let ((current-title (org-chronos-get-title-by-id uuid)))
+              (when current-title
+                (setf (org-chronos-interval-payload int)
+                      (plist-put payload :title current-title)))))))
+      ;; Update active
+      (let ((active (plist-get day-data :active)))
+        (when active
+          (let* ((payload (org-chronos-interval-payload active))
+                 (uuid (plist-get payload :chronos-id)))
+            (when uuid
+              (let ((current-title (org-chronos-get-title-by-id uuid)))
+                (when current-title
+                  (setf (org-chronos-interval-payload active)
+                        (plist-put payload :title current-title)))))))))
+
     (erase-buffer)
     (magit-insert-section (root)
       ;; 1. Status Header
@@ -178,14 +207,20 @@
     (magit-section-show-level-2-all)))
 
 ;;;###autoload
-(defun org-chronos-status ()
-  "Open the Org-Chronos Control Panel."
-  (interactive)
+(defun org-chronos-status (&optional hard-refresh)
+  "Open the Org-Chronos Control Panel.
+If HARD-REFRESH is non-nil, update task titles from disk."
+  (interactive "P")
   (let ((buf (get-buffer-create "*Org-Chronos*")))
     (with-current-buffer buf
       (org-chronos-dashboard-mode)
-      (org-chronos-render-dashboard))
+      (org-chronos-render-dashboard hard-refresh))
     (switch-to-buffer buf)))
+
+(defun org-chronos-hard-refresh ()
+  "Refresh the dashboard and update task titles from disk."
+  (interactive)
+  (org-chronos-status t))
 
 ;; -----------------------------------------------------------------------------
 ;; Navigation Logic (Retained from Phase 2)
