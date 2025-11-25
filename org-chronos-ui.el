@@ -107,7 +107,7 @@
          (active-payload (and active (org-chronos-interval-payload active)))
          (active-title (cond ((not active) "Nothing")
                              ((eq (org-chronos-interval-type active) :gap) "<not attributed>")
-                             (active-payload (plist-get active-payload :title))
+                             (active-payload (or (plist-get active-payload :title) "Untitled"))
                              (t "Nothing")))
          (active-dur (if active
                          (/ (- (ts-unix (ts-now)) (ts-unix (org-chronos-interval-start-time active))) 60)

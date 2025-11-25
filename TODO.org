@@ -1,7 +1,7 @@
 #+title: To be implemented
 
 
-* TODO Bug: error when running org-chronos-status
+* DONE Bug: error when running org-chronos-status
 This is printed in *Messages*
 
 An error occurred in diff-hl--update: (wrong-type-argument stringp nil) [5 times]
