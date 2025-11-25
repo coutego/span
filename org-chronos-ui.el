@@ -38,19 +38,18 @@
 (defvar org-chronos-dashboard-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map magit-section-mode-map)
-    ;; View Actions
-    (define-key map (kbd "q") 'org-chronos-quit)
-    (define-key map (kbd "RET") 'org-chronos-visit-entry)
-    (define-key map (kbd "r") 'org-chronos-status)
-    (define-key map (kbd "R") 'org-chronos-hard-refresh)
-    ;; Controller Actions (Direct Binding)
-    (define-key map (kbd "c") 'org-chronos-clock-in)
-    (define-key map (kbd "o") 'org-chronos-clock-out)
-    (define-key map (kbd "i") 'org-chronos-interruption)
-    (define-key map (kbd "t") 'org-chronos-tick)
-    ;; (define-key map (kbd "v") 'org-chronos-visual-edit) ;; Phase 4
     map)
   "Keymap for Org-Chronos dashboard.")
+
+;; Define keys outside defvar so re-evaluating the file updates the map
+(define-key org-chronos-dashboard-mode-map (kbd "q") 'org-chronos-quit)
+(define-key org-chronos-dashboard-mode-map (kbd "RET") 'org-chronos-visit-entry)
+(define-key org-chronos-dashboard-mode-map (kbd "r") 'org-chronos-status)
+(define-key org-chronos-dashboard-mode-map (kbd "R") 'org-chronos-hard-refresh)
+(define-key org-chronos-dashboard-mode-map (kbd "c") 'org-chronos-clock-in)
+(define-key org-chronos-dashboard-mode-map (kbd "o") 'org-chronos-clock-out)
+(define-key org-chronos-dashboard-mode-map (kbd "i") 'org-chronos-interruption)
+(define-key org-chronos-dashboard-mode-map (kbd "t") 'org-chronos-tick)
 
 (define-derived-mode org-chronos-dashboard-mode magit-section-mode "Chronos"
   "Major mode for the Org-Chronos Control Panel."
