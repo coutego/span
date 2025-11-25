@@ -1,0 +1,45 @@
+#+title: To be implemented
+
+* TODO Feature: bold face for tasks in the dashboard
+The tasks in the dashboard should be shown in bold, rathen than regular font
+to make the pop out easier
+
+
+* TODO Bug: duplicated tasks shown in the dashboard
+When clocking in a new task 'Tarefa 2', the task is shown twice:
+
+[ TIMELINE ]
+   20:27 - 20:28   Tarefa 1
+   20:28 -  ...    Tarefa 2
+   20:28 -  ...    Tarefa 2
+
+When clocking in another task, the ducplication dissapears:
+
+
+[ STATUS ]
+   Active:  New task
+   Elapsed: 0m
+
+
+[ ACTIONS ]
+   [c] Clock In   [i] Interrupt   [t] Tick   [r] Refresh   [q] Quit
+
+[ TIMELINE ]
+   20:27 - 20:28   Tarefa 1
+   20:28 - 20:33   Tarefa 2
+   20:33 -  ...    New task
+      ID: 800f90b7-659f-4494-9135-c5ee0ed0954b
+      Type: :ctx-switch
+   20:33 -  ...    New task
+
+* TODO Feature: implement the 'clock out' command
+It must be extremelly realiable, guiding the user if any
+conflict or question is found
+
+* TODO Feature: make 'clock in' command to offer current heading
+Add a new option to the clock in command, when in an org-mode buffer
+to clock in the current heading
+
+* TODO Bug: 'clock-in' changes buffer even if not in the dashboard
+When the clock-in command is run, the current buffer changes (to the
+previous one?) rather than staying in the current one.

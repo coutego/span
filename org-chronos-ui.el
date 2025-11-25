@@ -1,72 +1,106 @@
-;;; org-chronos-ui.el --- Dashboard for Org-Chronos -*- lexical-binding: t; -*-
+;;; org-chronos-ui.el --- Control Panel for Org-Chronos -*- lexical-binding: t; -*-
 
 (require 'magit-section)
+(require 'eieio)
 (require 'org-chronos-core)
 (require 'org-chronos-lookup)
+(require 'org-chronos-input) ;; Connects View to Controller
 (require 'ts)
 
 ;; -----------------------------------------------------------------------------
 ;; Faces (Visuals)
 ;; -----------------------------------------------------------------------------
 
-(defface org-chronos-time-face
-  '((t :inherit font-lock-constant-face :weight bold))
-  "Face for timestamps.")
+(defface org-chronos-header-active
+  '((t :inherit font-lock-function-name-face :height 1.2 :weight bold :background "#2d3743"))
+  "Face for the active task header.")
 
-(defface org-chronos-duration-face
+(defface org-chronos-key-face
+  '((t :inherit font-lock-builtin-face :weight bold))
+  "Face for keys in the action strip.")
+
+(defface org-chronos-dim-face
   '((t :inherit font-lock-comment-face))
-  "Face for duration text.")
-
-(defface org-chronos-header-face
-  '((t :inherit font-lock-function-name-face :height 1.2 :weight bold))
-  "Face for interval titles.")
-
-(defface org-chronos-gap-face
-  '((t :inherit error :inverse-video t))
-  "Face for interruptions or gaps.")
+  "Face for secondary text.")
 
 ;; -----------------------------------------------------------------------------
-;; Dashboard Mode
+;; Mode & Keymap
 ;; -----------------------------------------------------------------------------
 
 (defvar org-chronos-dashboard-mode-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map magit-section-mode-map)
+    ;; View Actions
     (define-key map (kbd "q") 'org-chronos-quit)
     (define-key map (kbd "RET") 'org-chronos-visit-entry)
-    (define-key map (kbd "g") 'org-chronos-status)
+    (define-key map (kbd "r") 'org-chronos-status)
+    ;; Controller Actions (Direct Binding)
+    (define-key map (kbd "c") 'org-chronos-clock-in)
+    (define-key map (kbd "i") 'org-chronos-interruption)
+    (define-key map (kbd "t") 'org-chronos-tick)
+    ;; (define-key map (kbd "v") 'org-chronos-visual-edit) ;; Phase 4
     map)
   "Keymap for Org-Chronos dashboard.")
 
 (define-derived-mode org-chronos-dashboard-mode magit-section-mode "Chronos"
-  "Major mode for the Org-Chronos dashboard."
+  "Major mode for the Org-Chronos Control Panel."
   (setq magit-section-show-child-count t)
   (read-only-mode 1))
-
-(defun org-chronos-quit ()
-  "Kill the dashboard buffer."
-  (interactive)
-  (kill-buffer (current-buffer)))
-
-;; -----------------------------------------------------------------------------
-;; Integration with Evil (Critical Requirement)
-;; -----------------------------------------------------------------------------
 
 (with-eval-after-load 'evil
   (evil-set-initial-state 'org-chronos-dashboard-mode 'motion)
   (evil-define-key 'motion org-chronos-dashboard-mode-map
-    (kbd "j") 'magit-section-forward
-    (kbd "k") 'magit-section-backward
+    (kbd "c") 'org-chronos-clock-in
+    (kbd "i") 'org-chronos-interruption
+    (kbd "t") 'org-chronos-tick
+    (kbd "r") 'org-chronos-status
     (kbd "RET") 'org-chronos-visit-entry
-    (kbd "q") 'org-chronos-quit
-    (kbd "g") 'org-chronos-status))
+    (kbd "q") 'org-chronos-quit))
+
+(defun org-chronos-quit ()
+  (interactive)
+  (kill-buffer (current-buffer)))
 
 ;; -----------------------------------------------------------------------------
-;; Rendering Logic
+;; Rendering Helpers
 ;; -----------------------------------------------------------------------------
 
-(defun org-chronos-insert-interval (interval)
-  "Render a single time block."
+(defun org-chronos--insert-action-strip ()
+  "Render the visual menu of available actions."
+  (let ((sep (propertize "   " 'face 'default)))
+    (insert "\n[ ACTIONS ]\n")
+    (insert "   ")
+    (insert (propertize "[c]" 'face 'org-chronos-key-face) " Clock In")
+    (insert sep)
+    (insert (propertize "[i]" 'face 'org-chronos-key-face) " Interrupt")
+    (insert sep)
+    (insert (propertize "[t]" 'face 'org-chronos-key-face) " Tick")
+    (insert sep)
+    (insert (propertize "[r]" 'face 'org-chronos-key-face) " Refresh")
+    (insert sep)
+    (insert (propertize "[q]" 'face 'org-chronos-key-face) " Quit")
+    (insert "\n\n")))
+
+(defun org-chronos--insert-status-header (day-data)
+  "Render the top status block."
+  (insert (propertize (format "ORG-CHRONOS  ::  %s\n" (ts-format "%A, %B %d, %Y" (ts-now)))
+                      'face 'magit-section-heading))
+  (insert (make-string 60 ?=) "\n")
+
+  (let* ((active (plist-get day-data :active))
+         (active-title (if active (plist-get (org-chronos-interval-payload active) :title) "Nothing"))
+         (active-dur (if active
+                         (/ (- (ts-unix (ts-now)) (ts-unix (org-chronos-interval-start-time active))) 60)
+                       0)))
+
+    (insert "[ STATUS ]\n")
+    (insert (format "   Active:  %s\n" (propertize active-title 'face 'org-chronos-header-active)))
+    (when active
+      (insert (format "   Elapsed: %dm\n" active-dur))))
+  (insert "\n"))
+
+(defun org-chronos--insert-interval (interval)
+  "Render a single timeline row."
   (let* ((start (org-chronos-interval-start-time interval))
          (end (org-chronos-interval-end-time interval))
          (payload (org-chronos-interval-payload interval))
@@ -74,25 +108,23 @@
          (type (org-chronos-interval-type interval))
          (uuid (plist-get payload :chronos-id))
          (start-str (ts-format "%H:%M" start))
-         (end-str (if end (ts-format "%H:%M" end) " ... "))
-         (dur-str (if end
-                      (format "(%dm)" (/ (org-chronos-interval-duration interval) 60))
-                    "(Active)")))
+         (end-str (if end (ts-format "%H:%M" end) " ... ")))
 
     (magit-insert-section (interval uuid)
       (magit-insert-heading
         (concat
-         (propertize (format "%s - %s" start-str end-str) 'face 'org-chronos-time-face)
+         (propertize (format "   %s - %s" start-str end-str) 'face 'org-chronos-dim-face)
          "   "
          (if (eq type :interruption)
-             (propertize title 'face 'org-chronos-gap-face)
-           (propertize title 'face 'org-chronos-header-face))
-         " "
-         (propertize dur-str 'face 'org-chronos-duration-face)))
+             (propertize title 'face 'error)
+           (propertize title 'face 'font-lock-function-name-face))))
       (magit-insert-section-body
-        (when uuid
-          (insert (format "      ID: %s\n" uuid)))
+        (when uuid (insert (format "      ID: %s\n" uuid)))
         (insert (format "      Type: %s\n" type))))))
+
+;; -----------------------------------------------------------------------------
+;; Main Render Function
+;; -----------------------------------------------------------------------------
 
 (defun org-chronos-render-dashboard ()
   "Draw the dashboard content."
@@ -100,36 +132,34 @@
         (day-data (org-chronos-compute-day))) ; Defaults to today
     (erase-buffer)
     (magit-insert-section (root)
-      (insert (propertize (format "Org-Chronos: %s\n\n" (ts-format "%A, %B %d" (ts-now)))
-                          'face 'magit-section-heading))
+      ;; 1. Status Header
+      (org-chronos--insert-status-header day-data)
 
-      ;; 1. Active Task (if any)
-      (when (plist-get day-data :active)
-        (magit-insert-section (active)
-          (magit-insert-heading (propertize "Current Context" 'face 'magit-section-highlight))
-          (org-chronos-insert-interval (plist-get day-data :active))
-          (insert "\n")))
+      ;; 2. Action Strip
+      (org-chronos--insert-action-strip)
 
-      ;; 2. Timeline
+      ;; 3. Timeline
       (magit-insert-section (timeline)
-        (magit-insert-heading (propertize "Timeline" 'face 'magit-section-highlight))
+        (insert (propertize "[ TIMELINE ]" 'face 'magit-section-heading) "\n")
         (dolist (int (plist-get day-data :intervals))
-          (org-chronos-insert-interval int)))
+          (org-chronos--insert-interval int))
+        (when (plist-get day-data :active)
+          (org-chronos--insert-interval (plist-get day-data :active))))
 
-      ;; 3. Ticks
+      ;; 4. Ticks
       (when (plist-get day-data :ticks)
         (insert "\n")
         (magit-insert-section (ticks)
-          (magit-insert-heading "Markers (Ticks)")
+          (magit-insert-heading "[ MARKERS ]")
           (dolist (tick (plist-get day-data :ticks))
-            (insert (format "- %s : %s\n"
+            (insert (format "   - %s : %s\n"
                             (ts-format "%H:%M" (plist-get tick :time))
                             (or (plist-get (plist-get tick :payload) :note) "Bookmark")))))))
     (magit-section-show-level-2-all)))
 
 ;;;###autoload
 (defun org-chronos-status ()
-  "Open the Org-Chronos Dashboard."
+  "Open the Org-Chronos Control Panel."
   (interactive)
   (let ((buf (get-buffer-create "*Org-Chronos*")))
     (with-current-buffer buf
@@ -137,24 +167,18 @@
       (org-chronos-render-dashboard))
     (switch-to-buffer buf)))
 
+;; -----------------------------------------------------------------------------
+;; Navigation Logic (Retained from Phase 2)
+;; -----------------------------------------------------------------------------
+
 (defun org-chronos-visit-entry ()
-  "Visit the heading associated with the section at point.
-Robustly handles EIEIO objects (newer magit-section) and structs."
+  "Visit the heading associated with the section at point."
   (interactive)
-  (require 'eieio) ;; Essential for handling the object class
+  (require 'eieio)
   (let* ((section (magit-current-section))
-         (uuid (cond
-                ;; 1. Try the standard accessor if it exists
-                ((fboundp 'magit-section-value)
-                 (magit-section-value section))
-
-                ;; 2. If it is an object (EIEIO), access the slot by name
-                ((object-p section)
-                 (slot-value section 'value))
-
-                ;; 3. Fallback/Error
-                (t nil))))
-
+         (uuid (cond ((fboundp 'magit-section-value) (magit-section-value section))
+                     ((object-p section) (slot-value section 'value))
+                     (t nil))))
     (if (and uuid (stringp uuid))
         (org-chronos-visit-id uuid)
       (message "No ID associated with this block."))))
