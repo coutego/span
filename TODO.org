@@ -43,3 +43,51 @@ to clock in the current heading
 * DONE Bug: 'clock-in' changes buffer even if not in the dashboard
 When the clock-in command is run, and 'Manual Find / Navigate to file' is selected,
 the previous buffer is visited rather than staying in the current one.
+
+* DONE Bug: 'Tick' doesn't do anything
+When pressing 't' in the dashboard a '1>' is shown in the modeline and nothing
+happens
+
+* TODO Bug: empty periods of time are not indicated
+One of the design choices of the system is to very clearly visually
+indicate any period that is not attributed to any task. The idea is to
+show that period in red (or similar effect) and indicate in the text
+clearly that the text is not attributed (with something like '<not attributed>')
+
+Currently this doesn't happen:
+
+
+#+begin_quote
+ORG-CHRONOS  ::  Tuesday, November 25, 2025
+============================================================
+[ STATUS ]
+   Active:  Foobar
+   Elapsed: 0m
+
+
+[ ACTIONS ]
+   [c] Clock In   [o] Clock Out   [i] Interrupt   [t] Tick   [r] Refresh   [q] Quit
+
+[ TIMELINE ]
+   20:27 - 20:28   Tarefa 1
+      ID: e8090842-0e23-4a79-b20a-7d5bba4f0d4a
+      Type: :ctx-switch
+   20:28 - 20:33   Tarefa 2
+      ID: 0caa9b34-bcd0-4c35-925c-bda70851043e
+      Type: :ctx-switch
+   20:33 - 20:47   New task
+      ID: 800f90b7-659f-4494-9135-c5ee0ed0954b
+      Type: :ctx-switch
+   20:47 - 20:53   tODO Another task to clock in
+      ID: 23b29677-9b6e-44c2-8e4c-2d14c461db54
+      Type: :ctx-switch
+   20:53 - 20:53   Extra task
+      ID: 1103aa20-0ac3-4fbf-a6f9-7b16c94cf7ba
+      Type: :ctx-switch
+   20:58 -  ...    Foobar
+   #+end_quote
+
+* TODO Feature: make 'refresh' refresh the titles of the tasks
+Then a title of a heading changes, make the dashboard to also change it when
+refreshing. If this is potentially slow, add a second refresh command ("Hard refresh"?)
+that does this. Perhaps the shortcut might be 'R'?

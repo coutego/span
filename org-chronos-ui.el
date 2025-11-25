@@ -54,7 +54,8 @@
 
 (with-eval-after-load 'evil
   (evil-set-initial-state 'org-chronos-dashboard-mode 'motion)
-  (evil-define-key 'motion org-chronos-dashboard-mode-map
+  ;; Use mode symbol to ensure bindings override Evil defaults (like 't' for find-char)
+  (evil-define-key 'motion 'org-chronos-dashboard-mode
     (kbd "c") 'org-chronos-clock-in
     (kbd "o") 'org-chronos-clock-out
     (kbd "i") 'org-chronos-interruption
