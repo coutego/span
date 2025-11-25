@@ -1,6 +1,6 @@
 #+title: To be implemented
 
-* TODO Feature: bold face for tasks in the dashboard
+* DONE Feature: bold face for tasks in the dashboard
 The tasks in the dashboard should be shown in bold, rathen than regular font
 to make the pop out easier
 

@@ -23,6 +23,10 @@
   '((t :inherit font-lock-comment-face))
   "Face for secondary text.")
 
+(defface org-chronos-task-face
+  '((t :inherit font-lock-function-name-face :weight bold))
+  "Face for task titles in the timeline.")
+
 ;; -----------------------------------------------------------------------------
 ;; Mode & Keymap
 ;; -----------------------------------------------------------------------------
@@ -117,7 +121,7 @@
          "   "
          (if (eq type :interruption)
              (propertize title 'face 'error)
-           (propertize title 'face 'font-lock-function-name-face))))
+           (propertize title 'face 'org-chronos-task-face))))
       (magit-insert-section-body
         (when uuid (insert (format "      ID: %s\n" uuid)))
         (insert (format "      Type: %s\n" type))))))
