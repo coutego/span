@@ -175,9 +175,7 @@ Returns a plist: (:intervals [...] :ticks [...] :active-context ...)"
                  :end-time nil ; Nil indicates "ongoing"
                  :duration (- (ts-unix now) (ts-unix start-ts))
                  :type (plist-get current-start-event :type)
-                 :payload (plist-get current-start-event :payload)))
-          ;; Add ongoing to intervals list
-          (push active-interval intervals)))
+                 :payload (plist-get current-start-event :payload)))))
 
       ;; Return structured data
       `(:intervals ,(nreverse intervals)

@@ -5,7 +5,7 @@ The tasks in the dashboard should be shown in bold, rathen than regular font
 to make the pop out easier
 
 
-* TODO Bug: duplicated tasks shown in the dashboard
+* DONE Bug: duplicated tasks shown in the dashboard
 When clocking in a new task 'Tarefa 2', the task is shown twice:
 
 [ TIMELINE ]
