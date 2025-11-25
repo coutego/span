@@ -27,6 +27,10 @@
   '((t :inherit font-lock-function-name-face :weight bold))
   "Face for task titles in the timeline.")
 
+(defface org-chronos-gap-face
+  '((t :inherit error :weight bold))
+  "Face for gaps/unattributed time.")
+
 ;; -----------------------------------------------------------------------------
 ;; Mode & Keymap
 ;; -----------------------------------------------------------------------------
@@ -97,7 +101,11 @@
   (insert (make-string 60 ?=) "\n")
 
   (let* ((active (plist-get day-data :active))
-         (active-title (if active (plist-get (org-chronos-interval-payload active) :title) "Nothing"))
+         (active-payload (and active (org-chronos-interval-payload active)))
+         (active-title (cond ((not active) "Nothing")
+                             ((eq (org-chronos-interval-type active) :gap) "<not attributed>")
+                             (active-payload (plist-get active-payload :title))
+                             (t "Nothing")))
          (active-dur (if active
                          (/ (- (ts-unix (ts-now)) (ts-unix (org-chronos-interval-start-time active))) 60)
                        0)))
@@ -113,20 +121,23 @@
   (let* ((start (org-chronos-interval-start-time interval))
          (end (org-chronos-interval-end-time interval))
          (payload (org-chronos-interval-payload interval))
-         (title (or (plist-get payload :title) "Unresolved"))
          (type (org-chronos-interval-type interval))
+         (title (cond ((eq type :gap) "<not attributed>")
+                      ((plist-get payload :title))
+                      (t "Unresolved")))
          (uuid (plist-get payload :chronos-id))
          (start-str (ts-format "%H:%M" start))
-         (end-str (if end (ts-format "%H:%M" end) " ... ")))
+         (end-str (if end (ts-format "%H:%M" end) " ... "))
+         (face (cond ((eq type :gap) 'org-chronos-gap-face)
+                     ((eq type :interruption) 'error)
+                     (t 'org-chronos-task-face))))
 
     (magit-insert-section (interval uuid)
       (magit-insert-heading
         (concat
          (propertize (format "   %s - %s" start-str end-str) 'face 'org-chronos-dim-face)
          "   "
-         (if (eq type :interruption)
-             (propertize title 'face 'error)
-           (propertize title 'face 'org-chronos-task-face))))
+         (propertize title 'face face)))
       (magit-insert-section-body
         (when uuid (insert (format "      ID: %s\n" uuid)))
         (insert (format "      Type: %s\n" type))))))

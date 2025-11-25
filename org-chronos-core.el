@@ -161,21 +161,50 @@ Returns a plist: (:intervals [...] :ticks [...] :active-context ...)"
                      :type (plist-get current-start-event :type)
                      :payload (plist-get current-start-event :payload))
                     intervals)))
+
+          ;; Check for gap if we were stopped (current-start-event is nil)
+          ;; but there are previous intervals.
+          (unless current-start-event
+            (when intervals
+              (let* ((last-int (car intervals))
+                     (last-end (org-chronos-interval-end-time last-int)))
+                (when (and last-end (> (ts-unix evt-time) (ts-unix last-end)))
+                  (push (org-chronos-interval-create
+                         :start-time last-end
+                         :end-time evt-time
+                         :duration (- (ts-unix evt-time) (ts-unix last-end))
+                         :type :gap
+                         :payload nil)
+                        intervals)))))
+
           ;; Set this event as the start of the NEW context
           (setq current-start-event it)))))
 
     ;; Handle currently active task (if day hasn't stopped yet)
     (let ((active-interval nil))
-      (when current-start-event
-        (let* ((start-ts (org-chronos--ts-from-log (plist-get current-start-event :time)))
-               (now (ts-now)))
-          (setq active-interval
-                (org-chronos-interval-create
-                 :start-time start-ts
-                 :end-time nil ; Nil indicates "ongoing"
-                 :duration (- (ts-unix now) (ts-unix start-ts))
-                 :type (plist-get current-start-event :type)
-                 :payload (plist-get current-start-event :payload)))))
+      (if current-start-event
+          (let* ((start-ts (org-chronos--ts-from-log (plist-get current-start-event :time)))
+                 (now (ts-now)))
+            (setq active-interval
+                  (org-chronos-interval-create
+                   :start-time start-ts
+                   :end-time nil ; Nil indicates "ongoing"
+                   :duration (- (ts-unix now) (ts-unix start-ts))
+                   :type (plist-get current-start-event :type)
+                   :payload (plist-get current-start-event :payload))))
+        ;; If stopped, check for gap until NOW
+        (when intervals
+          (let* ((last-int (car intervals))
+                 (last-end (org-chronos-interval-end-time last-int))
+                 (now (ts-now)))
+            (when (and last-end (< (ts-unix last-end) (ts-unix now)))
+              (setq active-interval
+                    (org-chronos-interval-create
+                     :start-time last-end
+                     :end-time nil
+                     :duration (- (ts-unix now) (ts-unix last-end))
+                     :type :gap
+                     :payload nil))))))
 
       ;; Return structured data
       `(:intervals ,(nreverse intervals)

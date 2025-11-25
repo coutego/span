@@ -48,7 +48,7 @@ the previous buffer is visited rather than staying in the current one.
 When pressing 't' in the dashboard a '1>' is shown in the modeline and nothing
 happens
 
-* TODO Bug: empty periods of time are not indicated
+* DONE Bug: empty periods of time are not indicated
 One of the design choices of the system is to very clearly visually
 indicate any period that is not attributed to any task. The idea is to
 show that period in red (or similar effect) and indicate in the text
