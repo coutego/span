@@ -1,13 +1,14 @@
-;;; org-chronos-input.el --- Interactive commands for Org-Chronos -*- lexical-binding: t; -*-
+;;; org-chronos-input.el --- Controller logic for Org-Chronos -*- lexical-binding: t; -*-
 
 (require 'org)
 (require 'org-id)
-(require 'transient)
 (require 'org-chronos-core)
-(require 'org-chronos-ui)
+;; We will require UI at the end or via autoload to avoid circularity issues during load,
+;; but strictly speaking, input needs to know about the status refresh.
+(declare-function org-chronos-status "org-chronos-ui")
 
 ;; -----------------------------------------------------------------------------
-;; 1. Heading Identification (The UUID Logic)
+;; 1. Heading Identification & ID Management
 ;; -----------------------------------------------------------------------------
 
 (defun org-chronos--get-or-create-id ()
@@ -46,6 +47,8 @@ If it does not exist, generate a UUID, set the property, and return it."
 
 (defun org-chronos--manual-selection-flow ()
   "Enter recursive edit to let user find a heading manually."
+  ;; Bury the dashboard so the user sees their files
+  (bury-buffer)
   (message "Org-Chronos: Navigate to your task and run M-x org-chronos-select-here")
   (setq org-chronos--recursive-selection nil)
   (recursive-edit)
@@ -53,50 +56,46 @@ If it does not exist, generate a UUID, set the property, and return it."
   org-chronos--recursive-selection)
 
 ;; -----------------------------------------------------------------------------
-;; 3. Interaction Logic (Clock In / Interrupt)
+;; 3. Interaction Commands
 ;; -----------------------------------------------------------------------------
 
-(defun org-chronos--clock-in-logic (selection-method)
-  "Main logic to switch context.
-SELECTION-METHOD: 'recent, 'manual, or 'create."
-  (let ((payload
-         (cond
-          ((eq selection-method 'manual)
-           (org-chronos--manual-selection-flow))
+(defun org-chronos-clock-in ()
+  "The main entry point to switch tasks.
+Offers: Manual Find, History (TODO), or New Task (TODO)."
+  (interactive)
+  (let* ((choices '(("Manual Find (Navigate to file)" . manual)
+                    ("Create Ad-Hoc Task" . create)))
+         (selection (completing-read "Clock In Method: " choices))
+         (method (cdr (assoc selection choices)))
+         (payload nil))
 
-          ;; TODO: Add 'recent (using completing-read on history)
-          ;; TODO: Add 'create (using org-capture)
-
-          (t (error "Unknown selection method")))))
+    (setq payload
+          (cond
+           ((eq method 'manual)
+            (org-chronos--manual-selection-flow))
+           ((eq method 'create)
+            (let ((title (read-string "Task Title: ")))
+              (list :title title :chronos-id (org-id-new))))
+           (t (error "Invalid selection"))))
 
     (when payload
       (org-chronos-log-event :ctx-switch payload)
       (org-chronos-status) ;; Refresh dashboard
       (message "Clocked in: %s" (plist-get payload :title)))))
 
-;; -----------------------------------------------------------------------------
-;; 4. Transient Menu
-;; -----------------------------------------------------------------------------
-
-(transient-define-prefix org-chronos-menu ()
-  "Main Action Menu for Org-Chronos."
-  ["Actions"
-   ("c" "Clock In (Manual Find)" (lambda () (interactive) (org-chronos--clock-in-logic 'manual)))
-   ("i" "Interruption"           org-chronos-interruption)
-   ("t" "Tick (Bookmark)"        org-chronos-tick)
-   ("g" "Open Dashboard"         org-chronos-status)
-   ("q" "Quit"                   transient-quit-one)])
-
-(defun org-chronos-interruption (reason)
+(defun org-chronos-interruption ()
   "Log an interruption."
-  (interactive "sReason for interruption: ")
-  (org-chronos-log-event :interruption (list :reason reason))
-  (org-chronos-status))
+  (interactive)
+  (let ((reason (read-string "Reason for interruption: ")))
+    (org-chronos-log-event :interruption (list :reason reason))
+    (org-chronos-status)))
 
-(defun org-chronos-tick (note)
+(defun org-chronos-tick ()
   "Log a tick/bookmark."
-  (interactive "sNote (optional): ")
-  (org-chronos-log-event :tick (list :note note))
-  (message "Tick logged."))
+  (interactive)
+  (let ((note (read-string "Tick Note (optional): ")))
+    (org-chronos-log-event :tick (list :note note))
+    (org-chronos-status)
+    (message "Tick logged.")))
 
 (provide 'org-chronos-input)
