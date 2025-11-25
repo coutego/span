@@ -65,16 +65,26 @@ If it does not exist, generate a UUID, set the property, and return it."
 
 (defun org-chronos-clock-in ()
   "The main entry point to switch tasks.
-Offers: Manual Find, History (TODO), or New Task (TODO)."
+Offers: Current Heading (if applicable), Manual Find, or New Task."
   (interactive)
-  (let* ((choices '(("Manual Find (Navigate to file)" . manual)
-                    ("Create Ad-Hoc Task" . create)))
+  (let* ((is-org (derived-mode-p 'org-mode))
+         (at-heading (and is-org
+                          (condition-case nil
+                              (save-excursion (org-back-to-heading t) t)
+                            (error nil))))
+         (choices (append
+                   (when at-heading
+                     '(("Current Heading" . current)))
+                   '(("Manual Find (Navigate to file)" . manual)
+                     ("Create Ad-Hoc Task" . create))))
          (selection (completing-read "Clock In Method: " choices))
          (method (cdr (assoc selection choices)))
          (payload nil))
 
     (setq payload
           (cond
+           ((eq method 'current)
+            (org-chronos--current-heading-info))
            ((eq method 'manual)
             (org-chronos--manual-selection-flow))
            ((eq method 'create)

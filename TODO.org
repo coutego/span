@@ -36,7 +36,7 @@ When clocking in another task, the ducplication dissapears:
 It must be extremelly realiable, guiding the user if any
 conflict or question is found
 
-* TODO Feature: make 'clock in' command to offer current heading
+* DONE Feature: make 'clock in' command to offer current heading
 Add a new option to the clock in command, when in an org-mode buffer
 to clock in the current heading
 
