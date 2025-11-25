@@ -1,15 +1,16 @@
-# Technical Implementation & Architecture: Org-Chronos
+# Technical Implementation & Architecture: Org-Chronos (v2)
 
-## 1. Architecture Overview
+## 1\. Architecture Overview
 
-The system follows a **Unidirectional Data Flow** pattern inspired by Redux/Elm but adapted for Emacs Lisp.
+The system follows a **Unidirectional Data Flow** pattern inspired by Redux/Elm but adapted for Emacs Lisp. It functions as a **Standalone Time Machine** that references Org files but does not write to them (except for ID generation).
 
 1.  **Event Stream (SSOT):** All actions (start task, interrupt, stop) are appended to a human-readable daily log file.
 2.  **Aggregator:** A pure function reads the log and reduces it into a list of "Intervals" (Time Blocks).
-3.  **Renderer:** The UI reads the Intervals to draw the Dashboard.
-4.  **Projector:** The Synchronization engine reads the Intervals to update `CLOCK` lines in Org files.
+3.  **The Control Panel (UI):** A unified application buffer that acts as both the **Renderer** (visualizing the day) and the **Controller** (dispatching new events).
 
-## 2. Data Structures & Persistence
+*(Note: The "Projector" phase—syncing back to Org CLOCK drawers—is currently out of scope to reduce complexity and data corruption risks.)*
+
+## 2\. Data Structures & Persistence
 
 ### 2.1 Event Log Storage
 
@@ -17,140 +18,134 @@ The system follows a **Unidirectional Data Flow** pattern inspired by Redux/Elm 
 Path: `(expand-file-name "chronos-logs/YYYY-MM-DD.log" org-roam-directory)`
 
 **Format: Human-Readable S-Expressions**
-To satisfy the requirement of being editable by hand, we will use valid Emacs Lisp s-expressions, but strictly formatted as **one event per line**. This allows for easy `diff`ing and manual editing.
+To satisfy the requirement of being editable by hand, we use valid Emacs Lisp s-expressions, strictly formatted as **one event per line**.
 
-**Schema (Example File Content):**
+**Schema (Example):**
 
 ```lisp
-;; Org-Chronos Log: 2023-10-27
+;; Org-Chronos Log: 2023-11-26
 (:time 1698386400.0 :type :day-start :payload nil)
 (:time 1698386405.0 :type :ctx-switch :payload (:chronos-id "uuid-1" :title "Organization"))
-(:time 1698388200.0 :type :ctx-switch :payload (:chronos-id "uuid-2" :title "Deep Work"))
-(:time 1698390000.0 :type :interruption :payload (:reason "Phone call"))
+(:time 1698388200.0 :type :interruption :payload (:reason "Phone call"))
 ;; User can manually delete a line or change the timestamp here easily.
-````
+```
 
-### 2.2 ID Lookup Strategy (Git Grep / Grep)
+### 2.2 ID Lookup Strategy (Git Grep)
 
-**Decision:** We will use **`git grep`** as the primary search mechanism.
-**Reason:** You explicitly stated your files are under version control. `git grep` is extremely fast (comparable to `rg`) because it searches the git index.
+**Purpose:** To link a log entry to a real Org heading without needing to maintain a database.
 
-**Logic:**
+1.  **Primary Lookup:** `git grep -n ":CHRONOS_ID:\s*uuid-1234"` (Instant).
+2.  **Fallback Lookup:** `grep -rn ...` (Optimized for non-git folders).
 
-1.  **Primary Lookup:** `git grep -n ":CHRONOS_ID:\s*uuid-1234"`
-      - Run from `org-roam-directory`.
-      - This is instant for text repositories of moderate to large size.
-2.  **Fallback Lookup:** `grep -rn --include="*.org" ":CHRONOS_ID:\s*uuid-1234" .`
-      - Used if the directory is not a git repo.
-      - Optimized to only look at `.org` files to improve speed.
-
-## 3\. Library Selection & Dependencies
+## 3\. Library Selection
 
 | Component | Library | Reason |
 | :--- | :--- | :--- |
-| **UI Menus** | `transient` | Standard for Magit-like menus. |
-| **Dashboard** | `magit-section` | Collapsible sections and clean UI rendering. |
-| **Search** | `vc` / built-in | We will call `git grep` or `grep` via `shell-command` or `process-lines`. |
+| **Dashboard** | `magit-section` | Handling the collapsible timeline rendering. |
+| **Search** | `vc` / `grep` | File lookup mechanics. |
 | **Time** | `ts.el` | Ergonomic time manipulation. |
-| **Lists** | `dash.el` | Functional list processing. |
-| **Files** | `f.el` | File path handling. |
+| **Lists/Files** | `dash.el` / `f.el` | Data manipulation. |
 | **Compat** | `evil-mode` | **Critical:** Custom keymaps must be bound to Evil states. |
+| **Menus** | `transient` | (Optional) Used for complex sub-menus if needed. |
 
 ## 4\. Functional Modules
 
 ### 4.1 Core Engine (`org-chronos-core.el`)
 
-  - **`org-chronos-log-event (type payload)`**:
-      - Opens the daily log file.
-      - Moves to end of file.
-      - Pretty-prints the event on a *single new line*.
-      - Saves.
-  - **`org-chronos-compute-day (date)`**:
-      - Reads the file as a Lisp list (wrapping content in `(...)`).
-      - Reduces list into `Interval` structs.
-      - *Error Check:* If the user manually edited the file and broke the syntax, catch the error and display a "Log Syntax Error" link in the dashboard to jump to the broken line.
+  * **`org-chronos-log-event`**: Appends immutable events to the daily log.
+  * **`org-chronos-compute-day`**: The "Reducer." Reads the log and calculates:
+      * Closed Intervals (Start -\> End).
+      * Active Interval (Start -\> NOW).
+      * Gaps/Interruptions.
 
 ### 4.2 The Locator (`org-chronos-lookup.el`)
 
-  - **`org-chronos-find-id (uuid)`**:
-      - checks if `(vc-backend org-roam-directory)` is `Git`.
-      - If yes: calls `git grep`.
-      - If no: calls `grep -r`.
-      - Returns `(file . point)`.
+  * **`org-chronos-find-id`**: Returns `(file . point)` for a given UUID using `git grep`.
 
 ### 4.3 The Synchronizer (`org-chronos-sync.el`)
 
-  - **`org-chronos-sync-day`**:
-      - Calculates intervals.
-      - Uses `org-chronos-find-id` to visit files.
-      - Updates `CLOCK` drawers.
-      - **Optimization:** If possible, perform a *batch search* for all unique IDs in the day's log at once using `git grep -E "id1|id2|id3"` to avoid spawning a shell process for every single interval.
+  * **Status:** **OUT OF SCOPE / FUTURE**.
+  * *Design Intent:* In the future, this module would read computed intervals and rewrite `CLOCK` drawers in Org files. For now, it is omitted to ensure a robust standalone experience.
 
-## 5\. UI Design & UX
+## 5\. UI Design: The "Control Panel"
 
-### 5.1 The Dashboard (`*Org-Chronos*`) & Evil Integration
+Instead of separating the "Dashboard" (View) from the "Menu" (Action), Org-Chronos uses a unified **Control Panel** pattern (similar to `magit-status`).
 
-The dashboard is read-only. We must define a specific `evil-state` or bind keys in `evil-motion-state-map` for this buffer.
+### 5.1 The Interface (`*Org-Chronos*`)
 
-**Keybindings (Evil-Compatible):**
+The buffer is interactive. Keybindings (`c`, `i`, `t`) trigger actions that immediately append to the log and refresh the buffer.
+
+**Layout Mockup:**
+
+```text
+================================================================================
+ORG-CHRONOS  ::  Sunday, Nov 26, 2023  ::  [<] Previous  [>] Next  [J] Jump
+================================================================================
+[ STATUS ]
+   Active:  Writing Code (Deep Work)
+   Elapsed: 45m
+   Total:   3h 10m logged today
+
+[ ACTIONS ]
+   [c] Clock In    [i] Interrupt    [t] Tick    [v] Edit Log    [q] Quit
+   [r] Refresh     [s] Search
+
+--------------------------------------------------------------------------------
+[ TIMELINE ]
+   09:00 - 10:00   Organization (Daily Review)              ID: uuid-1
+   10:00 - 10:15   [ INTERRUPTION: Co-worker Request ]      (15m Gap)
+   10:15 - NOW     Writing Code                             ID: uuid-2
+--------------------------------------------------------------------------------
+```
+
+### 5.2 Interaction & Evil Integration
+
+The buffer runs in a special mode (`org-chronos-dashboard-mode`).
 
 | Key | Action | Description |
 | :--- | :--- | :--- |
-| `j` / `k` | `magit-section-forward/backward` | Navigate up/down blocks. |
-| `RET` | `org-chronos-visit-entry` | Jump to the Org heading. |
-| `TAB` | `magit-section-toggle` | Toggle section visibility (if we nest details). |
-| `c` | `org-chronos-clock-in` | Transient: Clock into new/existing task. |
-| `i` | `org-chronos-interruption` | Transient: Log interruption. |
-| `v` | `org-chronos-visual-edit` | Enter editing mode for selected block. |
-| `q` | `org-chronos-quit` | Close dashboard. |
-| `S` | `org-chronos-sync` | Force sync logs to Org files. |
-
-**Visuals:**
-The dashboard will look similar to the previous mockup but will explicitly indicate if a log entry has been manually modified (e.g., via checksum or just relying on the sync).
-
-### 5.2 The "Visual Edit" Transient (`v`)
-
-When selecting a block and hitting `v`, we offer specific fixes:
-
-  - `s`: **Split** block at time... (Prompt for time, inserts `CTX_SWITCH` event in the log).
-  - `m`: **Merge** with previous (Deletes the event that started this block).
-  - `e`: **Edit** details (Manually open the log file at the line corresponding to this event).
-
-### 5.3 Recursive Editing (The "Go To" Flow)
-
-Unchanged from previous version, but ensures that when `recursive-edit` starts, the user is in their normal Evil state to navigate files comfortably.
+| **Navigation** | | |
+| `j` / `k` | `magit-section-...` | Navigate up/down the timeline blocks. |
+| `RET` | `visit-entry` | Jump to the Org heading (using `git grep`). |
+| **Write Actions** | | |
+| `c` | `clock-in` | Trigger fuzzy find or "Manual Find" to switch context. |
+| `i` | `interruption` | Log an interruption (gap). |
+| `t` | `tick` | Log a bookmark/tick at current time. |
+| **Correction** | | |
+| `v` | `visual-edit` | Open options to Split/Merge the selected block. |
+| `E` | `raw-edit` | Visit the `.log` file manually at the line of the event. |
 
 ## 6\. Integration Points
 
-### 6.1 Doom Modeline
+### 6.1 "Manual Find" Workflow (Recursive Edit)
 
-  - Custom segment `chronos`.
-  - Hooks into `window-configuration-change-hook` or a timer (low frequency) to check current interval state against `(current-time)`.
+When the user wants to "Clock In" to a specific file:
 
-### 6.2 Org-Roam
+1.  User presses `c` -\> Selects "Manual Find".
+2.  Org-Chronos enters `recursive-edit`.
+3.  User navigates normally to any file/heading.
+4.  User runs `M-x org-chronos-select-here`.
+5.  System grabs/creates `:CHRONOS_ID:`, exits recursion, logs event, and refreshes Dashboard.
 
-  - When `org-chronos-clock-in` creates a "New Task":
-    1.  Determine daily file: `(org-roam-dailies-capture-templates)`.
-    2.  Insert heading under `* Tasks`.
-    3.  Generate UUID.
-    4.  Set property `:CHRONOS_ID: uuid`.
-    5.  Save file.
-    6.  Log event using new ID.
+### 6.2 Doom Modeline
 
-## 7\. Development Phases
+  * Custom segment showing current active task.
+  * Visual alert (red/flashing) if the current state is "Interruption" or if the gap exceeds a threshold.
 
-1.  **Phase 1: The Logger (Data Layer)**
-      - Implement `log-event` (append-to-file) and `compute-day` (reduce logic).
-      - Define the text-based storage format.
-      - Unit tests for the reducer logic (detecting gaps/overlaps).
-2.  **Phase 2: The Locator & Dashboard (Read-Only)**
-      - Implement `git grep` / `grep` lookup.
-      - Render the Dashboard using `magit-section`.
-      - Bind `evil` keys.
-3.  **Phase 3: Interactivity (Write UI)**
-      - Implement Transients for Clocking/Interrupting.
-      - Implement the Recursive Edit flow for manual selection.
-4.  **Phase 4: Synchronization**
-      - Implement the `sync` logic to rewrite CLOCK entries in source files.
+## 7\. Development Phases (Revised)
 
-
+1.  **Phase 1: The Logger (Data Layer) [DONE]**
+      * Implement `log-event` and `compute-day`.
+      * Ensure robust time calculation logic.
+2.  **Phase 2: The Locator (Read-Only) [DONE]**
+      * Implement `git grep` lookup.
+      * Implement basic `magit-section` visualization.
+3.  **Phase 3: The Unified Control Panel (Interactivity)**
+      * **Refactor UI:** Merge "Menu" concepts into the Dashboard.
+      * Implement the "Action Strip" rendering.
+      * Bind `c`, `i`, `t` directly to the buffer map.
+      * Implement the Recursive Edit flow for "Clock In".
+4.  **Phase 4: Visual Correction**
+      * Implement the `v` key to Split/Merge blocks (editing the log file programmatically).
+5.  **Future Phase: Synchronization (Out of Scope)**
+      * Writing back to Org `CLOCK` drawers.
