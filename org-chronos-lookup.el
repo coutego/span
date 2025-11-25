@@ -3,6 +3,13 @@
 (require 'org-chronos-core)
 (require 'f)
 
+(defvar org-chronos--id-cache (make-hash-table :test 'equal)
+  "Runtime cache mapping UUID strings to Emacs Markers.")
+
+(defun org-chronos-cache-update (uuid marker)
+  "Update the cache with a new location."
+  (puthash uuid marker org-chronos--id-cache))
+
 (defun org-chronos--git-repo-p (dir)
   "Check if DIR is inside a git repository."
   (and (f-exists-p (f-join dir ".git"))
@@ -19,31 +26,42 @@ Returns a list of strings (program + args)."
       (list "grep" "-rn" "--include=*.org" pattern "."))))
 
 (defun org-chronos-find-id (uuid)
-  "Find the file and line number for a given UUID.
-Returns a cons cell (ABSOLUTE-PATH . LINE-NUMBER) or nil if not found."
-  (let* ((dir (or (bound-and-true-p org-roam-directory) default-directory))
-         (default-directory dir) ; Bind for process execution
-         (cmd (org-chronos--search-command uuid dir))
-         (result (ignore-errors
-                   (car (process-lines (car cmd) (cadr cmd) (caddr cmd) (cadddr cmd))))))
-
-    (when result
-      ;; Output format is usually "filename:line:match..."
-      (let ((parts (split-string result ":")))
-        (when (>= (length parts) 2)
-          (cons (f-join dir (nth 0 parts))
-                (string-to-number (nth 1 parts))))))))
+  "Find the location of UUID. Returns a Marker or nil.
+Checks: 1. Runtime Cache, 2. Git Grep / Grep."
+  ;; 1. Check Cache
+  (let ((cached (gethash uuid org-chronos--id-cache)))
+    (if (and (markerp cached) (marker-buffer cached))
+        cached
+      ;; 2. Fallback to Disk Search
+      (let* ((dir (or (bound-and-true-p org-roam-directory) default-directory))
+             (default-directory dir)
+             (cmd (org-chronos--search-command uuid dir))
+             ;; FIX: Use apply to handle variable length arguments correctly
+             (result (ignore-errors (car (apply #'process-lines cmd)))))
+        (when result
+          (let ((parts (split-string result ":")))
+            (when (>= (length parts) 2)
+              (let* ((file (f-join dir (nth 0 parts)))
+                     (line (string-to-number (nth 1 parts)))
+                     (buf (find-file-noselect file))
+                     (marker (make-marker)))
+                (with-current-buffer buf
+                  (save-excursion
+                    (goto-char (point-min))
+                    (forward-line (1- line))
+                    (set-marker marker (point))))
+                (org-chronos-cache-update uuid marker)
+                marker))))))))
 
 (defun org-chronos-visit-id (uuid)
   "Jump to the heading with the given UUID."
-  (let ((location (org-chronos-find-id uuid)))
-    (if location
+  (let ((marker (org-chronos-find-id uuid)))
+    (if marker
         (progn
-          (find-file (car location))
-          (goto-char (point-min))
-          (forward-line (1- (cdr location)))
+          (pop-to-buffer (marker-buffer marker))
+          (goto-char marker)
           (org-reveal)
           (org-back-to-heading))
-      (message "Org-Chronos: ID %s not found in files." uuid))))
+      (message "Org-Chronos: ID %s not found." uuid))))
 
 (provide 'org-chronos-lookup)

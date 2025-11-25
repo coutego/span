@@ -3,6 +3,7 @@
 (require 'org)
 (require 'org-id)
 (require 'org-chronos-core)
+(require 'org-chronos-lookup) ;; Connects View to Controller
 ;; We will require UI at the end or via autoload to avoid circularity issues during load,
 ;; but strictly speaking, input needs to know about the status refresh.
 (declare-function org-chronos-status "org-chronos-ui")
@@ -18,8 +19,11 @@ If it does not exist, generate a UUID, set the property, and return it."
     (unless id
       (setq id (org-id-new)) ;; Generate a robust UUID
       (org-entry-put (point) "CHRONOS_ID" id)
-      (save-buffer) ;; Persist immediately
+      ;; Update cache immediately so we can find it before saving
+      (org-chronos-cache-update id (point-marker))
       (message "Org-Chronos: Assigned new ID %s" id))
+    ;; Ensure cache is fresh even if ID existed (e.g. buffer just opened)
+    (when id (org-chronos-cache-update id (point-marker)))
     id))
 
 (defun org-chronos--current-heading-info ()
