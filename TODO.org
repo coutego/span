@@ -40,6 +40,6 @@ conflict or question is found
 Add a new option to the clock in command, when in an org-mode buffer
 to clock in the current heading
 
-* TODO Bug: 'clock-in' changes buffer even if not in the dashboard
-When the clock-in command is run, the current buffer changes (to the
-previous one?) rather than staying in the current one.
+* DONE Bug: 'clock-in' changes buffer even if not in the dashboard
+When the clock-in command is run, and 'Manual Find / Navigate to file' is selected,
+the previous buffer is visited rather than staying in the current one.

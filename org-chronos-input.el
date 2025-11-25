@@ -51,8 +51,10 @@ If it does not exist, generate a UUID, set the property, and return it."
 
 (defun org-chronos--manual-selection-flow ()
   "Enter recursive edit to let user find a heading manually."
-  ;; Bury the dashboard so the user sees their files
-  (bury-buffer)
+  ;; Bury the dashboard so the user sees their files, but only if we are actually
+  ;; in the dashboard. If we are already in a file, stay there.
+  (when (string= (buffer-name) "*Org-Chronos*")
+    (bury-buffer))
   (message "Org-Chronos: Navigate to your task and run M-x org-chronos-select-here")
   (setq org-chronos--recursive-selection nil)
   (recursive-edit)
