@@ -32,7 +32,7 @@ When clocking in another task, the ducplication dissapears:
       Type: :ctx-switch
    20:33 -  ...    New task
 
-* TODO Feature: implement the 'clock out' command
+* DONE Feature: implement the 'clock out' command
 It must be extremelly realiable, guiding the user if any
 conflict or question is found
 

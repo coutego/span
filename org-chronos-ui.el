@@ -40,6 +40,7 @@
     (define-key map (kbd "r") 'org-chronos-status)
     ;; Controller Actions (Direct Binding)
     (define-key map (kbd "c") 'org-chronos-clock-in)
+    (define-key map (kbd "o") 'org-chronos-clock-out)
     (define-key map (kbd "i") 'org-chronos-interruption)
     (define-key map (kbd "t") 'org-chronos-tick)
     ;; (define-key map (kbd "v") 'org-chronos-visual-edit) ;; Phase 4
@@ -55,6 +56,7 @@
   (evil-set-initial-state 'org-chronos-dashboard-mode 'motion)
   (evil-define-key 'motion org-chronos-dashboard-mode-map
     (kbd "c") 'org-chronos-clock-in
+    (kbd "o") 'org-chronos-clock-out
     (kbd "i") 'org-chronos-interruption
     (kbd "t") 'org-chronos-tick
     (kbd "r") 'org-chronos-status
@@ -75,6 +77,8 @@
     (insert "\n[ ACTIONS ]\n")
     (insert "   ")
     (insert (propertize "[c]" 'face 'org-chronos-key-face) " Clock In")
+    (insert sep)
+    (insert (propertize "[o]" 'face 'org-chronos-key-face) " Clock Out")
     (insert sep)
     (insert (propertize "[i]" 'face 'org-chronos-key-face) " Interrupt")
     (insert sep)

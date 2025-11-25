@@ -97,6 +97,20 @@ Offers: Current Heading (if applicable), Manual Find, or New Task."
       (org-chronos-status) ;; Refresh dashboard
       (message "Clocked in: %s" (plist-get payload :title)))))
 
+(defun org-chronos-clock-out ()
+  "Stop the currently active task.
+Checks if a task is running before logging the stop event."
+  (interactive)
+  (let* ((day-data (org-chronos-compute-day))
+         (active (plist-get day-data :active)))
+    (if active
+        (let ((title (plist-get (org-chronos-interval-payload active) :title)))
+          (when (y-or-n-p (format "Clock out of '%s'? " title))
+            (org-chronos-log-event :stop nil)
+            (org-chronos-status)
+            (message "Clocked out of '%s'." title)))
+      (message "Org-Chronos: No active task to clock out from."))))
+
 (defun org-chronos-interruption ()
   "Log an interruption."
   (interactive)
