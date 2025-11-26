@@ -132,8 +132,11 @@
 
 (defun org-chronos--insert-status-header (day-data)
   "Render the top status block."
-  (insert (propertize (format "ORG-CHRONOS  ::  %s\n" (ts-format "%A, %B %d, %Y" (ts-now)))
-                      'face 'magit-section-heading))
+  (let ((date (if (boundp 'org-chronos-current-date)
+                  (or org-chronos-current-date (ts-now))
+                (ts-now))))
+    (insert (propertize (format "ORG-CHRONOS  ::  %s\n" (ts-format "%A, %B %d, %Y" date))
+                        'face 'magit-section-heading)))
   (insert (make-string 60 ?=) "\n")
 
   (let* ((active (plist-get day-data :active))
@@ -185,8 +188,11 @@
 (defun org-chronos-render-dashboard (&optional update-titles)
   "Draw the dashboard content.
 If UPDATE-TITLES is non-nil, look up current headings for IDs."
-  (let ((inhibit-read-only t)
-        (day-data (org-chronos-compute-day))) ; Defaults to today
+  (let* ((inhibit-read-only t)
+         (date (if (boundp 'org-chronos-current-date)
+                   (or org-chronos-current-date (ts-now))
+                 (ts-now)))
+         (day-data (org-chronos-compute-day date))) ; Defaults to today
 
     ;; Optional: Update titles in memory
     (when update-titles

@@ -16,7 +16,7 @@ It should accept the global state computed in the previous task and render the s
 - ACTIVE: [c] Clock In, [o] Out, [i] Interrupt, [t] Tick, [r] Refresh, [R] Report, [q] Quit
 - FINISHED: [c] Resume, [R] Report, [q] Quit
 
-* TODO Feature: Input - Implement Start Day and Date Navigation
+* DONE Feature: Input - Implement Start Day and Date Navigation
 1. Implement `org-chronos-start-day`: Logs a `DAY_START` event.
 2. Implement `org-chronos-prev-day` and `org-chronos-next-day`:
    - Needs a buffer-local variable or global variable to track the "viewed date" (currently defaults to today).

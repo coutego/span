@@ -2,11 +2,23 @@
 
 (require 'org)
 (require 'org-id)
+(require 'ts)
 (require 'org-chronos-core)
 (require 'org-chronos-lookup) ;; Connects View to Controller
 ;; We will require UI at the end or via autoload to avoid circularity issues during load,
 ;; but strictly speaking, input needs to know about the status refresh.
 (declare-function org-chronos-status "org-chronos-ui")
+
+;; -----------------------------------------------------------------------------
+;; State
+;; -----------------------------------------------------------------------------
+
+(defvar org-chronos-current-date nil
+  "The date currently being viewed in the dashboard. Nil means today.")
+
+(defun org-chronos--get-view-date ()
+  "Return the current view date as a ts struct."
+  (or org-chronos-current-date (ts-now)))
 
 ;; -----------------------------------------------------------------------------
 ;; 1. Heading Identification & ID Management
@@ -65,6 +77,25 @@ If it does not exist, generate a UUID, set the property, and return it."
 ;; 3. Interaction Commands
 ;; -----------------------------------------------------------------------------
 
+(defun org-chronos-start-day ()
+  "Start the day. Logs a DAY_START event."
+  (interactive)
+  (let ((payload (list :title "Organization" :chronos-id "default-organization")))
+    (org-chronos-log-event :day-start payload (org-chronos--get-view-date))
+    (org-chronos-status)))
+
+(defun org-chronos-prev-day ()
+  "Navigate to the previous day."
+  (interactive)
+  (setq org-chronos-current-date (ts-adjust 'day -1 (org-chronos--get-view-date)))
+  (org-chronos-status))
+
+(defun org-chronos-next-day ()
+  "Navigate to the next day."
+  (interactive)
+  (setq org-chronos-current-date (ts-adjust 'day +1 (org-chronos--get-view-date)))
+  (org-chronos-status))
+
 (defun org-chronos-clock-in ()
   "The main entry point to switch tasks.
 Offers: Current Heading (if applicable), Manual Find, or New Task."
@@ -95,7 +126,7 @@ Offers: Current Heading (if applicable), Manual Find, or New Task."
            (t (error "Invalid selection"))))
 
     (when payload
-      (org-chronos-log-event :ctx-switch payload)
+      (org-chronos-log-event :ctx-switch payload (org-chronos--get-view-date))
       (org-chronos-status) ;; Refresh dashboard
       (message "Clocked in: %s" (plist-get payload :title)))))
 
@@ -103,12 +134,12 @@ Offers: Current Heading (if applicable), Manual Find, or New Task."
   "Stop the currently active task.
 Checks if a task is running before logging the stop event."
   (interactive)
-  (let* ((day-data (org-chronos-compute-day))
+  (let* ((day-data (org-chronos-compute-day (org-chronos--get-view-date)))
          (active (plist-get day-data :active)))
     (if active
         (let ((title (plist-get (org-chronos-interval-payload active) :title)))
           (when (y-or-n-p (format "Clock out of '%s'? " title))
-            (org-chronos-log-event :stop nil)
+            (org-chronos-log-event :stop nil (org-chronos--get-view-date))
             (org-chronos-status)
             (message "Clocked out of '%s'." title)))
       (message "Org-Chronos: No active task to clock out from."))))
@@ -117,14 +148,14 @@ Checks if a task is running before logging the stop event."
   "Log an interruption."
   (interactive)
   (let ((reason (read-string "Reason for interruption: ")))
-    (org-chronos-log-event :interruption (list :reason reason))
+    (org-chronos-log-event :interruption (list :reason reason) (org-chronos--get-view-date))
     (org-chronos-status)))
 
 (defun org-chronos-tick ()
   "Log a tick/bookmark."
   (interactive)
   (let ((note (read-string "Tick Note (optional): ")))
-    (org-chronos-log-event :tick (list :note note))
+    (org-chronos-log-event :tick (list :note note) (org-chronos--get-view-date))
     (org-chronos-status)
     (message "Tick logged.")))
 
