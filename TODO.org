@@ -11,7 +11,7 @@ States defined in DESIGN.md:
 * DONE Bug: some shortcuts don't work
 Those are: 's', 't', 'f'. It seems that they have in common that are evil motion commands. I think that evil shortcuts are conflicting with the commands defined by this package
 
-* TODO Bug: evil navigation keys don't work
+* DONE Bug: evil navigation keys don't work
 Now, when pression 'j' or 'k', I get a message:
 
 k is undefined [2 times]

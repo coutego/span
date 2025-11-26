@@ -58,6 +58,9 @@
 (define-key org-chronos-dashboard-mode-map (kbd "S") 'org-chronos-split-entry)
 (define-key org-chronos-dashboard-mode-map (kbd "e") 'org-chronos-edit-entry-time)
 (define-key org-chronos-dashboard-mode-map (kbd "f") 'org-chronos-fill-gap)
+;; Navigation (Standard & Evil-friendly)
+(define-key org-chronos-dashboard-mode-map (kbd "j") 'magit-section-forward)
+(define-key org-chronos-dashboard-mode-map (kbd "k") 'magit-section-backward)
 
 (define-derived-mode org-chronos-dashboard-mode magit-section-mode "Chronos"
   "Major mode for the Org-Chronos Control Panel."
@@ -66,28 +69,9 @@
   (add-hook 'post-command-hook #'org-chronos--update-context-actions nil t))
 
 (with-eval-after-load 'evil
-  ;; Switch to 'emacs state to prevent conflicts with motion keys (s, t, f)
-  (evil-set-initial-state 'org-chronos-dashboard-mode 'emacs)
-  (evil-define-key 'emacs 'org-chronos-dashboard-mode
-    (kbd "c") 'org-chronos-clock-in
-    (kbd "o") 'org-chronos-clock-out
-    (kbd "i") 'org-chronos-interruption
-    (kbd "t") 'org-chronos-tick
-    (kbd "r") 'org-chronos-status
-    (kbd "R") 'org-chronos-report
-    (kbd "s") 'org-chronos-start-day
-    (kbd "n") 'org-chronos-next-day
-    (kbd "p") 'org-chronos-prev-day
-    (kbd "d") 'org-chronos-delete-entry
-    (kbd "M") 'org-chronos-delete-entry
-    (kbd "S") 'org-chronos-split-entry
-    (kbd "e") 'org-chronos-edit-entry-time
-    (kbd "f") 'org-chronos-fill-gap
-    (kbd "RET") 'org-chronos-visit-entry
-    (kbd "q") 'org-chronos-quit
-    ;; Navigation
-    (kbd "j") 'magit-section-forward
-    (kbd "k") 'magit-section-backward))
+  ;; Switch to 'emacs state to prevent conflicts with motion keys (s, t, f).
+  ;; Since we defined all keys (including j/k) in the mode map, they will work in Emacs state.
+  (evil-set-initial-state 'org-chronos-dashboard-mode 'emacs))
 
 (defun org-chronos-quit ()
   (interactive)
