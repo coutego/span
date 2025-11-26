@@ -31,5 +31,5 @@ Implement logic to act on the specific interval under the cursor in the dashboar
 - `[S] Split`: Prompt user for a time within the selected interval. Insert a new `CTX_SWITCH` event at that time.
 - `[e] Edit Time`: Allow modifying the timestamp of the event that started the selected interval.
 
-* TODO Feature: Input - Gap Filling
+* DONE Feature: Input - Gap Filling
 - `[f] Fill Gap`: When cursor is on a Gap (red block), allow inserting a `CTX_SWITCH` at the start of that gap to retroactively log work.

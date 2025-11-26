@@ -216,4 +216,21 @@ Checks if a task is running before logging the stop event."
           (org-chronos-status))
       (message "Cannot edit this block (it might be a gap or system artifact)."))))
 
+(defun org-chronos-fill-gap ()
+  "Fill a gap by starting a task at the beginning of the gap."
+  (interactive)
+  (let* ((section (magit-current-section))
+         (interval (if (fboundp 'magit-section-value)
+                       (magit-section-value section)
+                     (slot-value section 'value))))
+    (if (and (org-chronos-interval-p interval)
+             (eq (org-chronos-interval-type interval) :gap))
+        (let* ((start-ts (org-chronos-interval-start-time interval))
+               (payload (org-chronos--select-task-payload)))
+          (when payload
+            (org-chronos-log-event :ctx-switch payload start-ts)
+            (org-chronos-status)
+            (message "Filled gap starting at %s" (ts-format "%H:%M" start-ts))))
+      (message "Not on a gap."))))
+
 (provide 'org-chronos-input)
