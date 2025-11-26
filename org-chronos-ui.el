@@ -53,6 +53,8 @@
 (define-key org-chronos-dashboard-mode-map (kbd "s") 'org-chronos-start-day)
 (define-key org-chronos-dashboard-mode-map (kbd "n") 'org-chronos-next-day)
 (define-key org-chronos-dashboard-mode-map (kbd "p") 'org-chronos-prev-day)
+(define-key org-chronos-dashboard-mode-map (kbd "d") 'org-chronos-delete-entry)
+(define-key org-chronos-dashboard-mode-map (kbd "M") 'org-chronos-delete-entry)
 
 (define-derived-mode org-chronos-dashboard-mode magit-section-mode "Chronos"
   "Major mode for the Org-Chronos Control Panel."
@@ -72,6 +74,8 @@
     (kbd "s") 'org-chronos-start-day
     (kbd "n") 'org-chronos-next-day
     (kbd "p") 'org-chronos-prev-day
+    (kbd "d") 'org-chronos-delete-entry
+    (kbd "M") 'org-chronos-delete-entry
     (kbd "RET") 'org-chronos-visit-entry
     (kbd "q") 'org-chronos-quit))
 
@@ -171,7 +175,8 @@
                      ((eq type :interruption) 'error)
                      (t 'org-chronos-task-face))))
 
-    (magit-insert-section (interval uuid)
+    ;; Store the full interval object as the section value
+    (magit-insert-section (interval interval)
       (magit-insert-heading
         (concat
          (propertize (format "   %s - %s" start-str end-str) 'face 'org-chronos-dim-face)
@@ -269,9 +274,13 @@ If HARD-REFRESH is non-nil, update task titles from disk."
   (interactive)
   (require 'eieio)
   (let* ((section (magit-current-section))
-         (uuid (cond ((fboundp 'magit-section-value) (magit-section-value section))
-                     ((object-p section) (slot-value section 'value))
-                     (t nil))))
+         (val (cond ((fboundp 'magit-section-value) (magit-section-value section))
+                    ((object-p section) (slot-value section 'value))
+                    (t nil)))
+         ;; Handle both new interval objects and legacy/fallback strings
+         (uuid (if (org-chronos-interval-p val)
+                   (plist-get (org-chronos-interval-payload val) :chronos-id)
+                 val)))
     (if (and uuid (stringp uuid))
         (org-chronos-visit-id uuid)
       (message "No ID associated with this block."))))

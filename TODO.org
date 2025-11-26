@@ -22,7 +22,7 @@ It should accept the global state computed in the previous task and render the s
    - Needs a buffer-local variable or global variable to track the "viewed date" (currently defaults to today).
    - Refresh dashboard with new date.
 
-* TODO Feature: Input - Contextual Timeline Actions (Delete/Merge)
+* DONE Feature: Input - Contextual Timeline Actions (Delete/Merge)
 Implement logic to act on the specific interval under the cursor in the dashboard.
 - `[d] Delete`: Identify the event that started the current interval and remove it from the log.
 - `[M] Merge Up`: Effectively the same as delete (merges current time into previous block).

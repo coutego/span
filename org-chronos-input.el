@@ -159,4 +159,19 @@ Checks if a task is running before logging the stop event."
     (org-chronos-status)
     (message "Tick logged.")))
 
+(defun org-chronos-delete-entry ()
+  "Delete the event that started the interval at point."
+  (interactive)
+  (let* ((section (magit-current-section))
+         (interval (if (fboundp 'magit-section-value)
+                       (magit-section-value section)
+                     (slot-value section 'value))))
+    (if (and (org-chronos-interval-p interval)
+             (org-chronos-interval-start-timestamp-raw interval))
+        (when (y-or-n-p "Delete this event? (Merges with previous) ")
+          (org-chronos-delete-event (org-chronos--get-view-date)
+                                    (org-chronos-interval-start-timestamp-raw interval))
+          (org-chronos-status))
+      (message "Cannot delete this block (it might be a gap or system artifact)."))))
+
 (provide 'org-chronos-input)

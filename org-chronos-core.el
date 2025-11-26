@@ -49,7 +49,8 @@ Defaults to `chronos-logs` inside your `org-roam-directory`."
   end-time   ; ts struct (nil if currently active)
   type       ; keyword (from the start event)
   payload    ; plist (from the start event)
-  duration)  ; integer seconds
+  duration   ; integer seconds
+  start-timestamp-raw) ; float (original log timestamp for identification)
 
 ;; -----------------------------------------------------------------------------
 ;; File I/O (The Logger)
@@ -83,6 +84,18 @@ TIME: Optional `ts' struct. Defaults to now."
     ;; "Pretty-prints the event on a single new line"
     (f-append-text (format "%S\n" event-data) coding-system-for-write file)
     (message "Org-Chronos: Logged %s" type)))
+
+(defun org-chronos-delete-event (date timestamp)
+  "Delete the event at TIMESTAMP from the log of DATE."
+  (let* ((path (org-chronos--log-path date))
+         (raw-events (org-chronos--read-raw-log path))
+         (new-events (cl-remove-if (lambda (evt)
+                                     (= (plist-get evt :time) timestamp))
+                                   raw-events)))
+    (with-temp-file path
+      (dolist (evt new-events)
+        (insert (format "%S\n" evt))))
+    (message "Org-Chronos: Deleted event at %f" timestamp)))
 
 (defun org-chronos--read-raw-log (file-path)
   "Read the log file and return a list of raw events.
@@ -147,7 +160,8 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
                      :end-time evt-time
                      :duration (- (ts-unix evt-time) (ts-unix start-ts))
                      :type (plist-get current-start-event :type)
-                     :payload (plist-get current-start-event :payload))
+                     :payload (plist-get current-start-event :payload)
+                     :start-timestamp-raw (plist-get current-start-event :time))
                     intervals)))
           (setq current-start-event nil))
 
@@ -162,7 +176,8 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
                      :end-time evt-time
                      :duration (- (ts-unix evt-time) (ts-unix start-ts))
                      :type (plist-get current-start-event :type)
-                     :payload (plist-get current-start-event :payload))
+                     :payload (plist-get current-start-event :payload)
+                     :start-timestamp-raw (plist-get current-start-event :time))
                     intervals)))
 
           ;; Check for gap if we were stopped (current-start-event is nil)
@@ -177,7 +192,8 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
                          :end-time evt-time
                          :duration (- (ts-unix evt-time) (ts-unix last-end))
                          :type :gap
-                         :payload nil)
+                         :payload nil
+                         :start-timestamp-raw nil) ;; Gaps don't have a start event
                         intervals)))))
 
           ;; Set this event as the start of the NEW context
@@ -194,7 +210,8 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
                    :end-time nil ; Nil indicates "ongoing"
                    :duration (- (ts-unix now) (ts-unix start-ts))
                    :type (plist-get current-start-event :type)
-                   :payload (plist-get current-start-event :payload))))
+                   :payload (plist-get current-start-event :payload)
+                   :start-timestamp-raw (plist-get current-start-event :time))))
         ;; If stopped, check for gap until NOW
         (when intervals
           (let* ((last-int (car intervals))
@@ -207,7 +224,8 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
                      :end-time nil
                      :duration (- (ts-unix now) (ts-unix last-end))
                      :type :gap
-                     :payload nil))))))
+                     :payload nil
+                     :start-timestamp-raw nil))))))
 
       ;; Determine Global State
       (let ((state (cond
