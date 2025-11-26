@@ -66,9 +66,9 @@
   (add-hook 'post-command-hook #'org-chronos--update-context-actions nil t))
 
 (with-eval-after-load 'evil
-  (evil-set-initial-state 'org-chronos-dashboard-mode 'motion)
-  ;; Use mode symbol to ensure bindings override Evil defaults (like 't' for find-char)
-  (evil-define-key 'motion 'org-chronos-dashboard-mode
+  ;; Switch to 'emacs state to prevent conflicts with motion keys (s, t, f)
+  (evil-set-initial-state 'org-chronos-dashboard-mode 'emacs)
+  (evil-define-key 'emacs 'org-chronos-dashboard-mode
     (kbd "c") 'org-chronos-clock-in
     (kbd "o") 'org-chronos-clock-out
     (kbd "i") 'org-chronos-interruption
@@ -84,7 +84,10 @@
     (kbd "e") 'org-chronos-edit-entry-time
     (kbd "f") 'org-chronos-fill-gap
     (kbd "RET") 'org-chronos-visit-entry
-    (kbd "q") 'org-chronos-quit))
+    (kbd "q") 'org-chronos-quit
+    ;; Navigation
+    (kbd "j") 'magit-section-forward
+    (kbd "k") 'magit-section-backward))
 
 (defun org-chronos-quit ()
   (interactive)

@@ -1,6 +1,6 @@
 #+title: To be implemented
 
-* TODO Feature: Core - Implement Global State Logic
+* DONE Feature: Core - Implement Global State Logic
 Update `org-chronos-compute-day` in `org-chronos-core.el` to determine the global state of the day based on the last event.
 States defined in DESIGN.md:
 - PRE-START (No events)
@@ -8,5 +8,5 @@ States defined in DESIGN.md:
 - INTERRUPTED (Last event: INTERRUPTION)
 - FINISHED (Last event: STOP)
 
-* TODO Bug: some shortcuts don't work
+* DONE Bug: some shortcuts don't work
 Those are: 's', 't', 'f'. It seems that they have in common that are evil motion commands. I think that evil shortcuts are conflicting with the commands defined by this package
