@@ -225,7 +225,8 @@
                      (t 'org-chronos-task-face))))
 
     ;; Store the full interval object as the section value
-    (magit-insert-section (interval interval)
+    ;; Use magit-section class explicitly to ensure compatibility
+    (magit-insert-section (magit-section interval)
       (magit-insert-heading
         (concat
          (propertize (format "   %s - %s" start-str end-str) 'face 'org-chronos-dim-face)
@@ -272,7 +273,7 @@ If UPDATE-TITLES is non-nil, look up current headings for IDs."
                         (plist-put payload :title current-title)))))))))
 
     (erase-buffer)
-    (magit-insert-section (root)
+    (magit-insert-section (magit-section 'root)
       ;; 1. Status Header
       (org-chronos--insert-status-header day-data)
 
@@ -280,7 +281,7 @@ If UPDATE-TITLES is non-nil, look up current headings for IDs."
       (org-chronos--insert-action-strip day-data)
 
       ;; 3. Timeline
-      (magit-insert-section (timeline)
+      (magit-insert-section (magit-section 'timeline)
         (insert (propertize "[ TIMELINE ]" 'face 'magit-section-heading) "\n")
         (dolist (int (plist-get day-data :intervals))
           (org-chronos--insert-interval int))
@@ -290,7 +291,7 @@ If UPDATE-TITLES is non-nil, look up current headings for IDs."
       ;; 4. Ticks
       (when (plist-get day-data :ticks)
         (insert "\n")
-        (magit-insert-section (ticks)
+        (magit-insert-section (magit-section 'ticks)
           (magit-insert-heading "[ MARKERS ]")
           (dolist (tick (plist-get day-data :ticks))
             (insert (format "   - %s : %s\n"
