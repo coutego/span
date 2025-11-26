@@ -9,7 +9,7 @@ States defined in DESIGN.md:
 - INTERRUPTED (Last event: INTERRUPTION)
 - FINISHED (Last event: STOP)
 
-* TODO Feature: UI - Dynamic Action Strip
+* DONE Feature: UI - Dynamic Action Strip
 Refactor `org-chronos--insert-action-strip` in `org-chronos-ui.el`.
 It should accept the global state computed in the previous task and render the specific keys/actions defined in DESIGN.md (Section 4).
 - PRE-START: [s] Start, [n/p] Nav, [q] Quit

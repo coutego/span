@@ -45,11 +45,14 @@
 (define-key org-chronos-dashboard-mode-map (kbd "q") 'org-chronos-quit)
 (define-key org-chronos-dashboard-mode-map (kbd "RET") 'org-chronos-visit-entry)
 (define-key org-chronos-dashboard-mode-map (kbd "r") 'org-chronos-status)
-(define-key org-chronos-dashboard-mode-map (kbd "R") 'org-chronos-hard-refresh)
+(define-key org-chronos-dashboard-mode-map (kbd "R") 'org-chronos-report)
 (define-key org-chronos-dashboard-mode-map (kbd "c") 'org-chronos-clock-in)
 (define-key org-chronos-dashboard-mode-map (kbd "o") 'org-chronos-clock-out)
 (define-key org-chronos-dashboard-mode-map (kbd "i") 'org-chronos-interruption)
 (define-key org-chronos-dashboard-mode-map (kbd "t") 'org-chronos-tick)
+(define-key org-chronos-dashboard-mode-map (kbd "s") 'org-chronos-start-day)
+(define-key org-chronos-dashboard-mode-map (kbd "n") 'org-chronos-next-day)
+(define-key org-chronos-dashboard-mode-map (kbd "p") 'org-chronos-prev-day)
 
 (define-derived-mode org-chronos-dashboard-mode magit-section-mode "Chronos"
   "Major mode for the Org-Chronos Control Panel."
@@ -65,7 +68,10 @@
     (kbd "i") 'org-chronos-interruption
     (kbd "t") 'org-chronos-tick
     (kbd "r") 'org-chronos-status
-    (kbd "R") 'org-chronos-hard-refresh
+    (kbd "R") 'org-chronos-report
+    (kbd "s") 'org-chronos-start-day
+    (kbd "n") 'org-chronos-next-day
+    (kbd "p") 'org-chronos-prev-day
     (kbd "RET") 'org-chronos-visit-entry
     (kbd "q") 'org-chronos-quit))
 
@@ -77,28 +83,52 @@
 ;; Rendering Helpers
 ;; -----------------------------------------------------------------------------
 
-(defun org-chronos--insert-action-strip ()
-  "Render the visual menu of available actions."
-  (let ((sep (propertize "   " 'face 'default)))
+(defun org-chronos--insert-action-strip (day-data)
+  "Render the visual menu of available actions based on DAY-DATA state."
+  (let* ((state (plist-get day-data :state))
+         (sep (propertize "   " 'face 'default)))
     (insert "\n[ ACTIONS ]\n")
-    ;; Row 1: Task Management
     (insert "   ")
-    (insert (propertize "[c]" 'face 'org-chronos-key-face) " Clock In")
-    (insert sep)
-    (insert (propertize "[o]" 'face 'org-chronos-key-face) " Clock Out")
-    (insert sep)
-    (insert (propertize "[i]" 'face 'org-chronos-key-face) " Interrupt")
-    (insert sep)
-    (insert (propertize "[t]" 'face 'org-chronos-key-face) " Tick")
-    (insert "\n")
-    ;; Row 2: System
-    (insert "   ")
-    (insert (propertize "[r]" 'face 'org-chronos-key-face) " Refresh")
-    (insert sep)
-    (insert (propertize "[R]" 'face 'org-chronos-key-face) " Hard Refresh")
-    (insert sep)
-    (insert (propertize "[q]" 'face 'org-chronos-key-face) " Quit")
-    (insert "\n\n")))
+
+    (cond
+     ;; PRE-START
+     ((eq state :pre-start)
+      (insert (propertize "[s]" 'face 'org-chronos-key-face) " Start Day")
+      (insert sep)
+      (insert (propertize "[n]" 'face 'org-chronos-key-face) " Next Day")
+      (insert sep)
+      (insert (propertize "[p]" 'face 'org-chronos-key-face) " Prev Day")
+      (insert sep)
+      (insert (propertize "[q]" 'face 'org-chronos-key-face) " Quit")
+      (insert "\n\n"))
+
+     ;; FINISHED
+     ((eq state :finished)
+      (insert (propertize "[c]" 'face 'org-chronos-key-face) " Resume")
+      (insert sep)
+      (insert (propertize "[R]" 'face 'org-chronos-key-face) " Report")
+      (insert sep)
+      (insert (propertize "[q]" 'face 'org-chronos-key-face) " Quit")
+      (insert "\n\n"))
+
+     ;; ACTIVE / INTERRUPTED (Default fallback)
+     (t
+      ;; Row 1: Task Management
+      (insert (propertize "[c]" 'face 'org-chronos-key-face) " Clock In")
+      (insert sep)
+      (insert (propertize "[o]" 'face 'org-chronos-key-face) " Clock Out")
+      (insert sep)
+      (insert (propertize "[i]" 'face 'org-chronos-key-face) " Interrupt")
+      (insert sep)
+      (insert (propertize "[t]" 'face 'org-chronos-key-face) " Tick")
+      (insert "\n   ")
+      ;; Row 2: System
+      (insert (propertize "[r]" 'face 'org-chronos-key-face) " Refresh")
+      (insert sep)
+      (insert (propertize "[R]" 'face 'org-chronos-key-face) " Report")
+      (insert sep)
+      (insert (propertize "[q]" 'face 'org-chronos-key-face) " Quit")
+      (insert "\n\n")))))
 
 (defun org-chronos--insert-status-header (day-data)
   "Render the top status block."
@@ -187,7 +217,7 @@ If UPDATE-TITLES is non-nil, look up current headings for IDs."
       (org-chronos--insert-status-header day-data)
 
       ;; 2. Action Strip
-      (org-chronos--insert-action-strip)
+      (org-chronos--insert-action-strip day-data)
 
       ;; 3. Timeline
       (magit-insert-section (timeline)
