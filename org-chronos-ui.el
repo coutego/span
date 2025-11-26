@@ -62,7 +62,8 @@
 (define-derived-mode org-chronos-dashboard-mode magit-section-mode "Chronos"
   "Major mode for the Org-Chronos Control Panel."
   (setq magit-section-show-child-count t)
-  (read-only-mode 1))
+  (read-only-mode 1)
+  (add-hook 'post-command-hook #'org-chronos--update-context-actions nil t))
 
 (with-eval-after-load 'evil
   (evil-set-initial-state 'org-chronos-dashboard-mode 'motion)
@@ -93,6 +94,40 @@
 ;; Rendering Helpers
 ;; -----------------------------------------------------------------------------
 
+(defvar-local org-chronos--action-overlay nil
+  "Overlay used to display the dynamic action strip.")
+
+(defun org-chronos--get-section-value (section)
+  "Retrieve the value from a magit SECTION safely."
+  (cond ((fboundp 'magit-section-value) (magit-section-value section))
+        ((object-p section) (slot-value section 'value))
+        (t nil)))
+
+(defun org-chronos--update-context-actions ()
+  "Update the action strip based on the section at point."
+  (when (and org-chronos--action-overlay
+             (not (minibufferp)))
+    (let* ((section (magit-current-section))
+           (value (and section (org-chronos--get-section-value section)))
+           (actions '())
+           (sep (propertize "   " 'face 'default)))
+
+      (when (org-chronos-interval-p value)
+        (let ((type (org-chronos-interval-type value)))
+          (if (eq type :gap)
+              (push (concat (propertize "[f]" 'face 'org-chronos-key-face) " Fill Gap") actions)
+            (push (concat (propertize "[d]" 'face 'org-chronos-key-face) " Delete") actions)
+            (push (concat (propertize "[S]" 'face 'org-chronos-key-face) " Split") actions)
+            (push (concat (propertize "[e]" 'face 'org-chronos-key-face) " Edit Time") actions)
+            (push (concat (propertize "[M]" 'face 'org-chronos-key-face) " Merge Up") actions))))
+
+      (let ((text (if actions
+                      (concat (propertize "   [ Context ] " 'face 'magit-section-heading)
+                              (mapconcat 'identity (nreverse actions) sep)
+                              "\n")
+                    "")))
+        (overlay-put org-chronos--action-overlay 'before-string text)))))
+
 (defun org-chronos--insert-action-strip (day-data)
   "Render the visual menu of available actions based on DAY-DATA state."
   (let* ((state (plist-get day-data :state))
@@ -110,7 +145,7 @@
       (insert (propertize "[p]" 'face 'org-chronos-key-face) " Prev Day")
       (insert sep)
       (insert (propertize "[q]" 'face 'org-chronos-key-face) " Quit")
-      (insert "\n\n"))
+      (insert "\n"))
 
      ;; FINISHED
      ((eq state :finished)
@@ -119,7 +154,7 @@
       (insert (propertize "[R]" 'face 'org-chronos-key-face) " Report")
       (insert sep)
       (insert (propertize "[q]" 'face 'org-chronos-key-face) " Quit")
-      (insert "\n\n"))
+      (insert "\n"))
 
      ;; ACTIVE / INTERRUPTED (Default fallback)
      (t
@@ -138,7 +173,15 @@
       (insert (propertize "[R]" 'face 'org-chronos-key-face) " Report")
       (insert sep)
       (insert (propertize "[q]" 'face 'org-chronos-key-face) " Quit")
-      (insert "\n\n")))))
+      (insert "\n")))
+
+    ;; Contextual Actions Overlay
+    (let ((pt (point)))
+      (if org-chronos--action-overlay
+          (move-overlay org-chronos--action-overlay pt pt)
+        (setq org-chronos--action-overlay (make-overlay pt pt)))
+      (overlay-put org-chronos--action-overlay 'evaporate t))
+    (insert "\n")))
 
 (defun org-chronos--insert-status-header (day-data)
   "Render the top status block."
@@ -253,7 +296,8 @@ If UPDATE-TITLES is non-nil, look up current headings for IDs."
             (insert (format "   - %s : %s\n"
                             (ts-format "%H:%M" (plist-get tick :time))
                             (or (plist-get (plist-get tick :payload) :note) "Bookmark")))))))
-    (magit-section-show-level-2-all)))
+    (magit-section-show-level-2-all)
+    (org-chronos--update-context-actions)))
 
 ;;;###autoload
 (defun org-chronos-status (&optional hard-refresh)
@@ -280,9 +324,7 @@ If HARD-REFRESH is non-nil, update task titles from disk."
   (interactive)
   (require 'eieio)
   (let* ((section (magit-current-section))
-         (val (cond ((fboundp 'magit-section-value) (magit-section-value section))
-                    ((object-p section) (slot-value section 'value))
-                    (t nil)))
+         (val (org-chronos--get-section-value section))
          ;; Handle both new interval objects and legacy/fallback strings
          (uuid (if (org-chronos-interval-p val)
                    (plist-get (org-chronos-interval-payload val) :chronos-id)
