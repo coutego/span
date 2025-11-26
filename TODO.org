@@ -1,31 +1,27 @@
 #+title: To be implemented
 
 
-* DONE Bug: the list of actions overflows to the right if buffer view is narrow
-For example, in this case the view is cut after 'Qu':
+* TODO Feature: UI - Dynamic Action Strip
+Refactor `org-chronos--insert-action-strip` in `org-chronos-ui.el`.
+It should accept the global state computed in the previous task and render the specific keys/actions defined in DESIGN.md (Section 4).
+- PRE-START: [s] Start, [n/p] Nav, [q] Quit
+- ACTIVE: [c] Clock In, [o] Out, [i] Interrupt, [t] Tick, [r] Refresh, [R] Report, [q] Quit
+- FINISHED: [c] Resume, [R] Report, [q] Quit
 
-ORG-CHRONOS  ::  Wednesday, November 26, 2025
-============================================================
-[ STATUS ]
-   Active:  Nothing
+* TODO Feature: Input - Implement Start Day and Date Navigation
+1. Implement `org-chronos-start-day`: Logs a `DAY_START` event.
+2. Implement `org-chronos-prev-day` and `org-chronos-next-day`:
+   - Needs a buffer-local variable or global variable to track the "viewed date" (currently defaults to today).
+   - Refresh dashboard with new date.
 
+* TODO Feature: Input - Contextual Timeline Actions (Delete/Merge)
+Implement logic to act on the specific interval under the cursor in the dashboard.
+- `[d] Delete`: Identify the event that started the current interval and remove it from the log.
+- `[M] Merge Up`: Effectively the same as delete (merges current time into previous block).
 
-[ ACTIONS ]
-   [c] Clock In   [o] Clock Out   [i] Interrupt   [t] Tick   [r] Refresh   [R] Hard Refresh   [q] Quit
+* TODO Feature: Input - Contextual Timeline Actions (Split/Edit)
+- `[S] Split`: Prompt user for a time within the selected interval. Insert a new `CTX_SWITCH` event at that time.
+- `[e] Edit Time`: Allow modifying the timestamp of the event that started the selected interval.
 
-[ TIMELINE ]
-
-* DONE Feature: design the statuses, actions per status and transitions
-- If there are no tasks logged in a day, the only action should be 'Start Day'
-- New actions should be created:
-  - Start Day
-  - Finish Day
-  - Produce Report
-- If the cursor is over a task, at least these actions should be available:
-  - Delete Time
-  - Split Time (the user should be able to chose the split time, whether to keep the task at the beginning or at the end and chose or create a task)
-  - Change duration (time can be taken from previous or next time)
-  - Refresh
-
-Design the detailed list of possible statuses of org-chronos, the substatuses (depending on the row selected, etc.), the actions in each (sub)status and
-the transition between them
+* TODO Feature: Input - Gap Filling
+- `[f] Fill Gap`: When cursor is on a Gap (red block), allow inserting a `CTX_SWITCH` at the start of that gap to retroactively log work.
