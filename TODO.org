@@ -1,8 +1,31 @@
 #+title: To be implemented
 
 
-* DONE Bug: error when running org-chronos-status
-This is printed in *Messages*
+* TODO Bug: the list of actions overflows to the right if buffer view is narrow
+For example, in this case the view is cut after 'Qu':
 
-An error occurred in diff-hl--update: (wrong-type-argument stringp nil) [5 times]
-format: Wrong type argument: stringp, nil
+ORG-CHRONOS  ::  Wednesday, November 26, 2025
+============================================================
+[ STATUS ]
+   Active:  Nothing
+
+
+[ ACTIONS ]
+   [c] Clock In   [o] Clock Out   [i] Interrupt   [t] Tick   [r] Refresh   [R] Hard Refresh   [q] Quit
+
+[ TIMELINE ]
+
+* TODO Feature: design the statuses, actions per status and transitions
+- If there are no tasks logged in a day, the only action should be 'Start Day'
+- New actions should be created:
+  - Start Day
+  - Finish Day
+  - Produce Report
+- If the cursor is over a task, at least these actions should be available:
+  - Delete Time
+  - Split Time (the user should be able to chose the split time, whether to keep the task at the beginning or at the end and chose or create a task)
+  - Change duration (time can be taken from previous or next time)
+  - Refresh
+
+Design the detailed list of possible statuses of org-chronos, the substatuses (depending on the row selected, etc.), the actions in each (sub)status and
+the transition between them
