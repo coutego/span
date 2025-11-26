@@ -15,7 +15,7 @@ ORG-CHRONOS  ::  Wednesday, November 26, 2025
 
 [ TIMELINE ]
 
-* TODO Feature: design the statuses, actions per status and transitions
+* DONE Feature: design the statuses, actions per status and transitions
 - If there are no tasks logged in a day, the only action should be 'Start Day'
 - New actions should be created:
   - Start Day
