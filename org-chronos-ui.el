@@ -81,6 +81,7 @@
   "Render the visual menu of available actions."
   (let ((sep (propertize "   " 'face 'default)))
     (insert "\n[ ACTIONS ]\n")
+    ;; Row 1: Task Management
     (insert "   ")
     (insert (propertize "[c]" 'face 'org-chronos-key-face) " Clock In")
     (insert sep)
@@ -89,7 +90,9 @@
     (insert (propertize "[i]" 'face 'org-chronos-key-face) " Interrupt")
     (insert sep)
     (insert (propertize "[t]" 'face 'org-chronos-key-face) " Tick")
-    (insert sep)
+    (insert "\n")
+    ;; Row 2: System
+    (insert "   ")
     (insert (propertize "[r]" 'face 'org-chronos-key-face) " Refresh")
     (insert sep)
     (insert (propertize "[R]" 'face 'org-chronos-key-face) " Hard Refresh")

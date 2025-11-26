@@ -1,7 +1,7 @@
 #+title: To be implemented
 
 
-* TODO Bug: the list of actions overflows to the right if buffer view is narrow
+* DONE Bug: the list of actions overflows to the right if buffer view is narrow
 For example, in this case the view is cut after 'Qu':
 
 ORG-CHRONOS  ::  Wednesday, November 26, 2025
