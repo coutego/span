@@ -55,6 +55,8 @@
 (define-key org-chronos-dashboard-mode-map (kbd "p") 'org-chronos-prev-day)
 (define-key org-chronos-dashboard-mode-map (kbd "d") 'org-chronos-delete-entry)
 (define-key org-chronos-dashboard-mode-map (kbd "M") 'org-chronos-delete-entry)
+(define-key org-chronos-dashboard-mode-map (kbd "S") 'org-chronos-split-entry)
+(define-key org-chronos-dashboard-mode-map (kbd "e") 'org-chronos-edit-entry-time)
 
 (define-derived-mode org-chronos-dashboard-mode magit-section-mode "Chronos"
   "Major mode for the Org-Chronos Control Panel."
@@ -76,8 +78,10 @@
     (kbd "p") 'org-chronos-prev-day
     (kbd "d") 'org-chronos-delete-entry
     (kbd "M") 'org-chronos-delete-entry
+    (kbd "S") 'org-chronos-split-entry
+    (kbd "e") 'org-chronos-edit-entry-time)
     (kbd "RET") 'org-chronos-visit-entry
-    (kbd "q") 'org-chronos-quit))
+    (kbd "q") 'org-chronos-quit)
 
 (defun org-chronos-quit ()
   (interactive)

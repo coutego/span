@@ -96,10 +96,8 @@ If it does not exist, generate a UUID, set the property, and return it."
   (setq org-chronos-current-date (ts-adjust 'day +1 (org-chronos--get-view-date)))
   (org-chronos-status))
 
-(defun org-chronos-clock-in ()
-  "The main entry point to switch tasks.
-Offers: Current Heading (if applicable), Manual Find, or New Task."
-  (interactive)
+(defun org-chronos--select-task-payload ()
+  "Prompt user to select a task. Returns payload plist."
   (let* ((is-org (derived-mode-p 'org-mode))
          (at-heading (and is-org
                           (condition-case nil
@@ -110,21 +108,23 @@ Offers: Current Heading (if applicable), Manual Find, or New Task."
                      '(("Current Heading" . current)))
                    '(("Manual Find (Navigate to file)" . manual)
                      ("Create Ad-Hoc Task" . create))))
-         (selection (completing-read "Clock In Method: " choices))
-         (method (cdr (assoc selection choices)))
-         (payload nil))
+         (selection (completing-read "Select Task: " choices))
+         (method (cdr (assoc selection choices))))
 
-    (setq payload
-          (cond
-           ((eq method 'current)
-            (org-chronos--current-heading-info))
-           ((eq method 'manual)
-            (org-chronos--manual-selection-flow))
-           ((eq method 'create)
-            (let ((title (read-string "Task Title: ")))
-              (list :title title :chronos-id (org-id-new))))
-           (t (error "Invalid selection"))))
+    (cond
+     ((eq method 'current)
+      (org-chronos--current-heading-info))
+     ((eq method 'manual)
+      (org-chronos--manual-selection-flow))
+     ((eq method 'create)
+      (let ((title (read-string "Task Title: ")))
+        (list :title title :chronos-id (org-id-new))))
+     (t (error "Invalid selection")))))
 
+(defun org-chronos-clock-in ()
+  "The main entry point to switch tasks."
+  (interactive)
+  (let ((payload (org-chronos--select-task-payload)))
     (when payload
       (org-chronos-log-event :ctx-switch payload (org-chronos--get-view-date))
       (org-chronos-status) ;; Refresh dashboard
@@ -173,5 +173,47 @@ Checks if a task is running before logging the stop event."
                                     (org-chronos-interval-start-timestamp-raw interval))
           (org-chronos-status))
       (message "Cannot delete this block (it might be a gap or system artifact)."))))
+
+(defun org-chronos--parse-time-input (time-str date-ts)
+  "Parse HH:MM string and return a ts struct on DATE-TS."
+  (let* ((parts (split-string time-str ":"))
+         (hour (string-to-number (nth 0 parts)))
+         (min (string-to-number (nth 1 parts))))
+    (ts-apply :hour hour :minute min :second 0 date-ts)))
+
+(defun org-chronos-split-entry ()
+  "Split the current interval by inserting a new task at a specific time."
+  (interactive)
+  (let* ((section (magit-current-section))
+         (interval (if (fboundp 'magit-section-value)
+                       (magit-section-value section)
+                     (slot-value section 'value))))
+    (if (org-chronos-interval-p interval)
+        (let* ((time-str (read-string "Split at (HH:MM): "))
+               (split-ts (org-chronos--parse-time-input time-str (org-chronos--get-view-date)))
+               (payload (org-chronos--select-task-payload)))
+          (when payload
+            (org-chronos-log-event :ctx-switch payload split-ts)
+            (org-chronos-status)
+            (message "Split interval at %s" time-str)))
+      (message "No interval selected."))))
+
+(defun org-chronos-edit-entry-time ()
+  "Change the start time of the selected interval."
+  (interactive)
+  (let* ((section (magit-current-section))
+         (interval (if (fboundp 'magit-section-value)
+                       (magit-section-value section)
+                     (slot-value section 'value))))
+    (if (and (org-chronos-interval-p interval)
+             (org-chronos-interval-start-timestamp-raw interval))
+        (let* ((old-ts (org-chronos-interval-start-timestamp-raw interval))
+               (time-str (read-string "New Start Time (HH:MM): "))
+               (new-ts (org-chronos--parse-time-input time-str (org-chronos--get-view-date))))
+          (org-chronos-update-event-time (org-chronos--get-view-date)
+                                         old-ts
+                                         (ts-unix new-ts))
+          (org-chronos-status))
+      (message "Cannot edit this block (it might be a gap or system artifact)."))))
 
 (provide 'org-chronos-input)

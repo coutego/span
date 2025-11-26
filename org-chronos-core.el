@@ -85,6 +85,12 @@ TIME: Optional `ts' struct. Defaults to now."
     (f-append-text (format "%S\n" event-data) coding-system-for-write file)
     (message "Org-Chronos: Logged %s" type)))
 
+(defun org-chronos--write-log (file-path events)
+  "Overwrite FILE-PATH with EVENTS."
+  (with-temp-file file-path
+    (dolist (evt events)
+      (insert (format "%S\n" evt)))))
+
 (defun org-chronos-delete-event (date timestamp)
   "Delete the event at TIMESTAMP from the log of DATE."
   (let* ((path (org-chronos--log-path date))
@@ -92,14 +98,28 @@ TIME: Optional `ts' struct. Defaults to now."
          (new-events (cl-remove-if (lambda (evt)
                                      (= (plist-get evt :time) timestamp))
                                    raw-events)))
-    (with-temp-file path
-      (dolist (evt new-events)
-        (insert (format "%S\n" evt))))
+    (org-chronos--write-log path new-events)
     (message "Org-Chronos: Deleted event at %f" timestamp)))
+
+(defun org-chronos-update-event-time (date old-timestamp new-timestamp)
+  "Update the timestamp of an event."
+  (let* ((path (org-chronos--log-path date))
+         (raw-events (org-chronos--read-raw-log path))
+         (target (cl-find-if (lambda (evt)
+                               (= (plist-get evt :time) old-timestamp))
+                             raw-events)))
+    (if target
+        (progn
+          (setf (plist-get target :time) new-timestamp)
+          ;; We write back; sorting happens on read
+          (org-chronos--write-log path raw-events)
+          (message "Org-Chronos: Updated event time."))
+      (message "Org-Chronos: Event not found to update."))))
 
 (defun org-chronos--read-raw-log (file-path)
   "Read the log file and return a list of raw events.
-Handles file reading manually to support the 'one s-exp per line' format."
+Handles file reading manually to support the 'one s-exp per line' format.
+Sorts events by time to ensure correct reduction."
   (when (f-exists-p file-path)
     (with-temp-buffer
       (insert-file-contents file-path)
@@ -113,7 +133,9 @@ Handles file reading manually to support the 'one s-exp per line' format."
                     (push (read line) events))))
               (forward-line 1))
           (error (message "Org-Chronos: Syntax error in log %s" err)))
-        (nreverse events)))))
+        ;; Sort by time to handle out-of-order insertions
+        (sort (nreverse events)
+              (lambda (a b) (< (plist-get a :time) (plist-get b :time))))))))
 
 ;; -----------------------------------------------------------------------------
 ;; The Reducer (Compute Day)

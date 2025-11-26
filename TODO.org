@@ -27,7 +27,7 @@ Implement logic to act on the specific interval under the cursor in the dashboar
 - `[d] Delete`: Identify the event that started the current interval and remove it from the log.
 - `[M] Merge Up`: Effectively the same as delete (merges current time into previous block).
 
-* TODO Feature: Input - Contextual Timeline Actions (Split/Edit)
+* DONE Feature: Input - Contextual Timeline Actions (Split/Edit)
 - `[S] Split`: Prompt user for a time within the selected interval. Insert a new `CTX_SWITCH` event at that time.
 - `[e] Edit Time`: Allow modifying the timestamp of the event that started the selected interval.
 
