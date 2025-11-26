@@ -1,42 +1,12 @@
 #+title: To be implemented
 
-
-* DONE Feature: Core - Implement Global State Logic
+* TODO Feature: Core - Implement Global State Logic
 Update `org-chronos-compute-day` in `org-chronos-core.el` to determine the global state of the day based on the last event.
 States defined in DESIGN.md:
 - PRE-START (No events)
 - ACTIVE (Last event: DAY_START or CTX_SWITCH)
 - INTERRUPTED (Last event: INTERRUPTION)
 - FINISHED (Last event: STOP)
-
-* DONE Feature: UI - Dynamic Action Strip
-Refactor `org-chronos--insert-action-strip` in `org-chronos-ui.el`.
-It should accept the global state computed in the previous task and render the specific keys/actions defined in DESIGN.md (Section 4).
-- PRE-START: [s] Start, [n/p] Nav, [q] Quit
-- ACTIVE: [c] Clock In, [o] Out, [i] Interrupt, [t] Tick, [r] Refresh, [R] Report, [q] Quit
-- FINISHED: [c] Resume, [R] Report, [q] Quit
-
-* DONE Feature: Input - Implement Start Day and Date Navigation
-1. Implement `org-chronos-start-day`: Logs a `DAY_START` event.
-2. Implement `org-chronos-prev-day` and `org-chronos-next-day`:
-   - Needs a buffer-local variable or global variable to track the "viewed date" (currently defaults to today).
-   - Refresh dashboard with new date.
-
-* DONE Feature: Input - Contextual Timeline Actions (Delete/Merge)
-Implement logic to act on the specific interval under the cursor in the dashboard.
-- `[d] Delete`: Identify the event that started the current interval and remove it from the log.
-- `[M] Merge Up`: Effectively the same as delete (merges current time into previous block).
-
-* DONE Feature: Input - Contextual Timeline Actions (Split/Edit)
-- `[S] Split`: Prompt user for a time within the selected interval. Insert a new `CTX_SWITCH` event at that time.
-- `[e] Edit Time`: Allow modifying the timestamp of the event that started the selected interval.
-
-* DONE Feature: Input - Gap Filling
-- `[f] Fill Gap`: When cursor is on a Gap (red block), allow inserting a `CTX_SWITCH` at the start of that gap to retroactively log work.
-
-* DONE Bug: no contextual tasks are shown.
-The ACTIONS menu is fixed, no matter what line the cursor is in. In particular,
-when the cursor is placed over an Unresolved time, no 'f' command is shown, but it also happens for all others
 
 * TODO Bug: some shortcuts don't work
 Those are: 's', 't', 'f'. It seems that they have in common that are evil motion commands. I think that evil shortcuts are conflicting with the commands defined by this package
