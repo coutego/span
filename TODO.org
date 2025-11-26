@@ -33,3 +33,10 @@ Implement logic to act on the specific interval under the cursor in the dashboar
 
 * DONE Feature: Input - Gap Filling
 - `[f] Fill Gap`: When cursor is on a Gap (red block), allow inserting a `CTX_SWITCH` at the start of that gap to retroactively log work.
+
+* TODO Bug: no contextual tasks are shown.
+The ACTIONS menu is fixed, no matter what line the cursor is in. In particular,
+when the cursor is placed over an Unresolved time, no 'f' command is shown, but it also happens for all others
+
+* TODO Bug: some shortcuts don't work
+Those are: 's', 't', 'f'. It seems that they have in common that are evil motion commands. I think that evil shortcuts are conflicting with the commands defined by this package
