@@ -1,6 +1,14 @@
 #+title: To be implemented
 
 
+* DONE Feature: Core - Implement Global State Logic
+Update `org-chronos-compute-day` in `org-chronos-core.el` to determine the global state of the day based on the last event.
+States defined in DESIGN.md:
+- PRE-START (No events)
+- ACTIVE (Last event: DAY_START or CTX_SWITCH)
+- INTERRUPTED (Last event: INTERRUPTION)
+- FINISHED (Last event: STOP)
+
 * TODO Feature: UI - Dynamic Action Strip
 Refactor `org-chronos--insert-action-strip` in `org-chronos-ui.el`.
 It should accept the global state computed in the previous task and render the specific keys/actions defined in DESIGN.md (Section 4).

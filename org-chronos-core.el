@@ -118,12 +118,13 @@ Handles file reading manually to support the 'one s-exp per line' format."
 
 (defun org-chronos-compute-day (&optional date)
   "Pure function that reads the log and reduces it into Intervals.
-Returns a plist: (:intervals [...] :ticks [...] :active-context ...)"
+Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
   (let* ((path (org-chronos--log-path date))
          (raw-events (org-chronos--read-raw-log path))
          (intervals '())
          (ticks '())
-         (current-start-event nil))
+         (current-start-event nil)
+         (has-history nil)) ;; Track if we have seen any state-changing events
 
     ;; Iterate through events to build intervals
     (--each raw-events
@@ -138,6 +139,7 @@ Returns a plist: (:intervals [...] :ticks [...] :active-context ...)"
 
          ;; Case 2: STOP - Closes current interval, starts nothing
          ((eq evt-type :stop)
+          (setq has-history t)
           (when current-start-event
             (let ((start-ts (org-chronos--ts-from-log (plist-get current-start-event :time))))
               (push (org-chronos-interval-create
@@ -151,6 +153,7 @@ Returns a plist: (:intervals [...] :ticks [...] :active-context ...)"
 
          ;; Case 3: STATE CHANGE (Day Start, Ctx Switch, Interruption)
          (t
+          (setq has-history t)
           ;; If there was an active context, close it first
           (when current-start-event
             (let ((start-ts (org-chronos--ts-from-log (plist-get current-start-event :time))))
@@ -206,10 +209,20 @@ Returns a plist: (:intervals [...] :ticks [...] :active-context ...)"
                      :type :gap
                      :payload nil))))))
 
-      ;; Return structured data
-      `(:intervals ,(nreverse intervals)
-        :ticks ,(nreverse ticks)
-        :active ,active-interval))))
+      ;; Determine Global State
+      (let ((state (cond
+                    (current-start-event
+                     (if (eq (plist-get current-start-event :type) :interruption)
+                         :interrupted
+                       :active))
+                    (has-history :finished)
+                    (t :pre-start))))
+
+        ;; Return structured data
+        `(:intervals ,(nreverse intervals)
+          :ticks ,(nreverse ticks)
+          :active ,active-interval
+          :state ,state)))))
 
 (provide 'org-chronos-core)
 ;;; org-chronos-core.el ends here
