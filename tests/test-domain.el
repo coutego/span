@@ -171,14 +171,15 @@ Scenario: Task A stops at T2. Gap until T3. User fills gap starting at T2."
          (new-events (org-chronos-add-event events :ctx-switch '(:title "Task B") t2))
          (view-model (org-chronos-reduce-events new-events)))
     
-    (let ((intervals (plist-get view-model :intervals)))
-      ;; Expected: Task A (1000-2000), Task B (2000-3000), Task C (3000-...)
-      ;; Bug: Task A, Gap (0s), Task B, Task C
+    (let ((intervals (plist-get view-model :intervals))
+          (active (plist-get view-model :active)))
+      ;; Expected: Task A (1000-2000), Task B (2000-3000), Task C (Active)
       
-      (should (= (length intervals) 3))
+      ;; Check Intervals (A and B)
+      (should (= (length intervals) 2))
+      
       (let ((int-a (nth 0 intervals))
-            (int-b (nth 1 intervals))
-            (int-c (nth 2 intervals)))
+            (int-b (nth 1 intervals)))
         
         ;; Check Task A
         (should (equal (plist-get (org-chronos-interval-payload int-a) :title) "Task A"))
@@ -187,7 +188,8 @@ Scenario: Task A stops at T2. Gap until T3. User fills gap starting at T2."
         ;; Check Task B (Should NOT be a gap)
         (should-not (eq (org-chronos-interval-type int-b) :gap))
         (should (equal (plist-get (org-chronos-interval-payload int-b) :title) "Task B"))
-        (should (= (org-chronos-interval-duration int-b) 1000))
-        
-        ;; Check Task C
-        (should (equal (plist-get (org-chronos-interval-payload int-c) :title) "Task C"))))))
+        (should (= (org-chronos-interval-duration int-b) 1000)))
+      
+      ;; Check Active Task C
+      (should active)
+      (should (equal (plist-get (org-chronos-interval-payload active) :title) "Task C")))))

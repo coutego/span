@@ -1,6 +1,6 @@
 #+title: To be implemented
 
-* TODO Bug: non attributed period not deleted
+* DONE Bug: non attributed period not deleted
 When pressing 'f' to attribute a task to a '<non attributed>' period,
 the new one is added, but the <non attributed> is kept, with zero minutes
 
