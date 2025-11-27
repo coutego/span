@@ -1,18 +1,2 @@
 #+title: To be implemented
 
-* DONE Feature: Core - Implement Global State Logic
-Update `org-chronos-compute-day` in `org-chronos-core.el` to determine the global state of the day based on the last event.
-States defined in DESIGN.md:
-- PRE-START (No events)
-- ACTIVE (Last event: DAY_START or CTX_SWITCH)
-- INTERRUPTED (Last event: INTERRUPTION)
-- FINISHED (Last event: STOP)
-
-* DONE Bug: some shortcuts don't work
-Those are: 's', 't', 'f'. It seems that they have in common that are evil motion commands. I think that evil shortcuts are conflicting with the commands defined by this package
-
-* DONE Bug: evil navigation keys don't work
-Now, when pression 'j' or 'k', I get a message:
-
-k is undefined [2 times]
-j is undefined [2 times]
