@@ -63,6 +63,43 @@ The application state is immutable. User input triggers a state transition, whic
   - `(chronos-cmd-next-row)`: Updates `selected-id` to the next interval in the list.
   - `(chronos-cmd-clock-in)`: Reads `selected-id`, prompts user, calls Domain Layer to add event, updates State, triggers Save & Render.
 
+* Testing Strategy
+
+** 1. Domain Layer (Unit Tests)
+- **Goal:** Verify business logic correctness without Emacs UI or File System.
+- **Tools:** `ert` (Emacs Lisp Regression Testing).
+- **Scenarios:**
+  - **Reduction:** Given a list of raw events (Start, Switch, Stop), verify `chronos-reduce-events` produces the correct list of Intervals with correct durations.
+  - **Gaps:** Verify that missing time between a Stop and a Start is correctly identified as a `:gap` interval.
+  - **Active Task:** Verify that if the last event is a Start, the reducer produces an open-ended Active Interval.
+  - **Splitting:** Given an event list and a split time, verify the new list contains the correct inserted event and sorted order.
+  - **Merging/Deletion:** Verify removing an event correctly merges the time into the adjacent interval.
+
+** 2. State Layer (Integration Tests)
+- **Goal:** Verify state transitions.
+- **Tools:** `ert`.
+- **Scenarios:**
+  - **Navigation:** Call `(chronos-cmd-next-row)` on a mock state. Verify `selected-id` updates to the ID of the next interval.
+  - **Date Change:** Call `(chronos-cmd-next-day)`. Verify `date` updates and `events` are cleared (or loaded from mock).
+  - **Selection Stability:** Verify that after a reload/refresh, if the previously selected ID still exists, it remains selected.
+
+** 3. Persistence Layer (IO Tests)
+- **Goal:** Verify serialization.
+- **Tools:** `ert` with `make-temp-file`.
+- **Scenarios:**
+  - **Round Trip:** Write a list of complex events (with plists and strings) to a temp file. Read it back. Assert equality.
+  - **Corruption:** Write a malformed line. Verify the reader handles it gracefully (e.g., skips or errors safely).
+
+** 4. UI Layer (Snapshot/Render Tests)
+- **Goal:** Verify the buffer looks correct for a given state.
+- **Tools:** `ert` with `with-temp-buffer`.
+- **Scenarios:**
+  - **Rendering:**
+    1. Create a mock `chronos-state` with specific events.
+    2. Call the render function in a temp buffer.
+    3. Assert the buffer string contains expected substrings (e.g., "09:00 - 10:00", "Task Title").
+    4. Assert text properties (faces) are applied to the selected row.
+
 * Implementation Plan
 
 1. **Define the State Struct:** Create the container for the application.
