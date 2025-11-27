@@ -6,9 +6,10 @@
 
 ;; Mock FS read to avoid disk I/O in state tests
 (defun mock-fs-read (date)
-  `((:time ,(ts-unix (ts-now)) :type :start :payload (:chronos-id "id-1"))
-    (:time ,(+ (ts-unix (ts-now)) 60) :type :stop)
-    (:time ,(+ (ts-unix (ts-now)) 120) :type :start :payload (:chronos-id "id-2"))))
+  ;; Use explicit large timestamps to avoid second-truncation issues
+  `((:time 10000.0 :type :start :payload (:chronos-id "id-1"))
+    (:time 10060.0 :type :stop)
+    (:time 10120.0 :type :start :payload (:chronos-id "id-2"))))
 
 (ert-deftest test-chronos-state-init ()
   "Test state initialization."
