@@ -11,13 +11,13 @@ Create `tests/test-persistence.el`:
 - Test handling of empty files or malformed lines.
 
 * Refactor: Phase 2 - Domain Layer
-** TODO Refactor Core to Pure Functions
+** DONE Refactor Core to Pure Functions
 Ensure `org-chronos-core.el` contains:
 - `(chronos-add-event events type payload time)` -> new list
 - `(chronos-delete-event events timestamp)` -> new list
 - `(chronos-update-event events old-ts new-ts)` -> new list
 - `(chronos-reduce-events events)` -> view-model plist
-** TODO Test Domain Logic
+** DONE Test Domain Logic
 Create `tests/test-domain.el`:
 - Test adding/deleting events maintains sort order.
 - Test reduction logic (intervals, gaps, active task).

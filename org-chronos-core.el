@@ -6,32 +6,15 @@
 ;; Package-Requires: ((emacs "27.1") (ts "0.2") (dash "2.19") (f "0.20"))
 
 ;;; Commentary:
-;; Implements the Data Layers:
-;; 1. FS Layer: Reading/Writing events to disk.
-;; 2. Domain Layer: Pure functions for event manipulation and day reduction.
-;; 3. Service Layer: Orchestration of FS and Domain layers.
+;; Implements the Domain Layer:
+;; Pure functions for event manipulation and day reduction.
+;; Does NOT perform I/O.
 
 ;;; Code:
 
 (require 'cl-lib)
 (require 'ts)
 (require 'dash)
-(require 'f)
-
-;; -----------------------------------------------------------------------------
-;; Customization
-;; -----------------------------------------------------------------------------
-
-(defgroup org-chronos nil
-  "Time tracking based on Event Sourcing."
-  :group 'org)
-
-(defcustom org-chronos-storage-directory
-  (expand-file-name "chronos-logs/" (or (bound-and-true-p org-roam-directory)
-                                        user-emacs-directory))
-  "Directory where daily logs are stored."
-  :type 'directory
-  :group 'org-chronos)
 
 ;; -----------------------------------------------------------------------------
 ;; Data Structures
@@ -54,70 +37,29 @@
   start-timestamp-raw) ; float (original log timestamp for identification)
 
 ;; -----------------------------------------------------------------------------
-;; 1. FS Layer (Persistence)
+;; Domain Layer (Pure Logic)
 ;; -----------------------------------------------------------------------------
 
-(defun org-chronos--log-path (date)
-  "Return the full path to the log file for DATE.
-DATE can be a `ts' struct, a time string, or nil (defaults to today)."
-  (let* ((ts-obj (cond ((null date) (ts-now))
-                       ((ts-p date) date)
-                       ((stringp date) (ts-parse date))
-                       (t (error "Invalid date format"))))
-         (filename (format "%s.log" (ts-format "%Y-%m-%d" ts-obj))))
-    (f-join org-chronos-storage-directory filename)))
-
-(defun org-chronos-load-events (date)
-  "Load events for DATE from disk.
-Returns a sorted list of event plists."
-  (let ((path (org-chronos--log-path date)))
-    (if (f-exists-p path)
-        (with-temp-buffer
-          (insert-file-contents path)
-          (goto-char (point-min))
-          (let ((events '()))
-            (condition-case err
-                (while (not (eobp))
-                  (let ((line (string-trim (thing-at-point 'line t))))
-                    (unless (string-empty-p line)
-                      (unless (string-prefix-p ";;" line)
-                        (push (read line) events))))
-                  (forward-line 1))
-              (error (message "Org-Chronos: Syntax error in log %s" err)))
-            ;; Ensure sorted by time
-            (sort (nreverse events)
-                  (lambda (a b) (< (plist-get a :time) (plist-get b :time))))))
-      '())))
-
-(defun org-chronos-save-events (date events)
-  "Write EVENTS to the log file for DATE.
-Overwrites the file with the provided list."
-  (let ((path (org-chronos--log-path date)))
-    (unless (f-exists-p (file-name-directory path))
-      (f-mkdir (file-name-directory path)))
-    (with-temp-file path
-      (dolist (evt events)
-        (insert (format "%S\n" evt))))))
-
-;; -----------------------------------------------------------------------------
-;; 2. Domain Layer (Pure Logic)
-;; -----------------------------------------------------------------------------
-
-(defun org-chronos-pure-add-event (events type payload time)
+(defun org-chronos-add-event (events type payload time)
   "Return a new list of events with the added event, sorted.
+EVENTS is the current list of event plists.
+TYPE is the event keyword.
+PAYLOAD is the data plist.
 TIME can be a `ts' struct or float."
   (let* ((ts-val (if (ts-p time) (ts-unix time) time))
          (new-evt `(:time ,ts-val :type ,type :payload ,payload)))
     (sort (cons new-evt (copy-sequence events))
           (lambda (a b) (< (plist-get a :time) (plist-get b :time))))))
 
-(defun org-chronos-pure-delete-event (events timestamp)
-  "Return a new list of events with the event at TIMESTAMP removed."
+(defun org-chronos-delete-event (events timestamp)
+  "Return a new list of events with the event at TIMESTAMP removed.
+EVENTS is the list of event plists.
+TIMESTAMP is the float time of the event to remove."
   (cl-remove-if (lambda (evt)
                   (= (plist-get evt :time) timestamp))
                 events))
 
-(defun org-chronos-pure-update-event (events old-ts new-ts)
+(defun org-chronos-update-event (events old-ts new-ts)
   "Return a new list of events with the event at OLD-TS moved to NEW-TS.
 Re-sorts the list."
   (let ((updated (mapcar (lambda (evt)
@@ -135,13 +77,15 @@ Re-sorts the list."
     (ts-parse (format-time-string "%Y-%m-%d %H:%M:%S" (seconds-to-time time-val))))
    (t (error "Unknown time format in log: %S" time-val))))
 
-(defun org-chronos-reduce-day (events)
+(defun org-chronos-reduce-events (events &optional now-ts)
   "Pure function that reduces a list of EVENTS into a Day View Model.
+NOW-TS is optional, defaults to (ts-now), used for calculating active duration.
 Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
   (let ((intervals '())
         (ticks '())
         (current-start-event nil)
-        (has-history nil))
+        (has-history nil)
+        (now (or now-ts (ts-now))))
 
     (--each events
       (let* ((evt-time (org-chronos--ts-from-log (plist-get it :time)))
@@ -203,8 +147,7 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
     ;; Handle Active
     (let ((active-interval nil))
       (if current-start-event
-          (let* ((start-ts (org-chronos--ts-from-log (plist-get current-start-event :time)))
-                 (now (ts-now)))
+          (let* ((start-ts (org-chronos--ts-from-log (plist-get current-start-event :time))))
             (setq active-interval
                   (org-chronos-interval-create
                    :start-time start-ts
@@ -216,8 +159,7 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
         ;; Gap until NOW
         (when intervals
           (let* ((last-int (car intervals))
-                 (last-end (org-chronos-interval-end-time last-int))
-                 (now (ts-now)))
+                 (last-end (org-chronos-interval-end-time last-int)))
             (when (and last-end (< (ts-unix last-end) (ts-unix now)))
               (setq active-interval
                     (org-chronos-interval-create
@@ -243,36 +185,20 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
           :state ,state)))))
 
 ;; -----------------------------------------------------------------------------
-;; 3. Service Layer (Orchestration)
+;; Legacy / Service Layer (To be deprecated or moved to Controller)
 ;; -----------------------------------------------------------------------------
 
-(defun org-chronos-log-event (type &optional payload time)
-  "Log an event. Loads, adds, and saves."
-  (let* ((ts-obj (or time (ts-now)))
-         (events (org-chronos-load-events ts-obj))
-         (new-events (org-chronos-pure-add-event events type payload ts-obj)))
-    (org-chronos-save-events ts-obj new-events)
-    (message "Org-Chronos: Logged %s" type)))
+;; Note: These functions are kept temporarily to avoid breaking the current UI
+;; until the Controller layer is fully refactored. They now wrap the pure functions.
 
-(defun org-chronos-delete-event (date timestamp)
-  "Delete an event. Loads, removes, and saves."
-  (let* ((events (org-chronos-load-events date))
-         (new-events (org-chronos-pure-delete-event events timestamp)))
-    (org-chronos-save-events date new-events)
-    (message "Org-Chronos: Deleted event at %f" timestamp)))
-
-(defun org-chronos-update-event-time (date old-ts new-ts)
-  "Update an event timestamp. Loads, updates, and saves."
-  (let* ((events (org-chronos-load-events date))
-         (new-events (org-chronos-pure-update-event events old-ts new-ts)))
-    (org-chronos-save-events date new-events)
-    (message "Org-Chronos: Updated event time.")))
+(declare-function org-chronos-load-events "org-chronos-core")
+(declare-function org-chronos-save-events "org-chronos-core")
 
 (defun org-chronos-compute-day (&optional date)
   "Compute the day view model. Loads and reduces."
   (let* ((d (or date (ts-now)))
          (events (org-chronos-load-events d)))
-    (org-chronos-reduce-day events)))
+    (org-chronos-reduce-events events)))
 
 (provide 'org-chronos-core)
 ;;; org-chronos-core.el ends here
