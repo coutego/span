@@ -1,21 +1,72 @@
-#+title: Refactor design
+#+title: Refactor Design & Architecture
 
-The package is getting a bit too tricky to maintain, so we will try to
-make it testable and modular, descomposing the functionality in several
-layers, according to the following general principles
-- We will use immutable data structures in the way of Clojure, even
-  if Elisp will require deep-copies. The daily logs are small enough that
-  the data structures should be also small
-- The UI will be redrawn every time there is a change of the state. Similar to the
-  previous point, this is very wasteful, but given the small number of elements to be
-  shown, it should be fast enough
-- The main layers would be:
-  - FS layer, which takes care of persisting from and to files (buffers) the time log
-  - Day log layer, which takes care of the day log logical representation in memory
-    and the modifications on this structure (no modifications, in fact, but creation
-    of new versions of the structure - the layer are the modifications)
-  - UI layer, which keeps a representation of the logical state of the UI (
-    this will be the Day log structure + additional information about the status
-    of the UI)
-  - Controller layer, which takes input from the user and creates a new version of the
-    UI Layer structure and renders each new version
+* Architecture Overview: Unidirectional Data Flow
+The package will be refactored to follow a strict "Elm/Redux" style architecture.
+The application state is immutable. User input triggers a state transition, which triggers a full UI redraw.
+
+** The Cycle
+1. **State:** A single struct holds the entire state of the application (Current date, list of events, currently selected item ID, etc.).
+2. **Render:** A pure function takes the State and draws the buffer.
+3. **Input:** User presses a key.
+4. **Update:** A function takes (State, Input) and returns (New State).
+5. **Effect:** If the State changed, persist to disk and GOTO step 2.
+
+* Layer Breakdown
+
+** 1. Persistence Layer (FS)
+- **Responsibility:** Pure I/O. Reading and writing S-expressions to files.
+- **No Logic:** It does not know what an "event" is, only that it is a list of Lisp objects.
+- **Functions:**
+  - `(chronos-fs-read date) -> list-of-sexps`
+  - `(chronos-fs-write date list-of-sexps) -> nil`
+
+** 2. Domain Layer (Core Logic)
+- **Responsibility:** Business logic. Event Sourcing implementation.
+- **Data Structures:** `Event`, `Interval`.
+- **Purity:** 100% Pure functions. No side effects.
+- **Functions:**
+  - `(chronos-add-event events type payload) -> new-events-list`
+  - `(chronos-reduce-events events) -> day-view-model` (Calculates intervals, gaps, active task).
+  - `(chronos-split-interval events interval split-time) -> new-events-list`
+
+** 3. Application State Layer (The Store)
+- **Responsibility:** Holding the transient state of the editor.
+- **Structure:**
+  #+begin_src elisp
+  (cl-defstruct chronos-state
+    date           ; ts-struct
+    events         ; list of raw events
+    view-model     ; computed intervals (cached for rendering)
+    selected-id    ; UUID of the currently selected row in UI
+    last-message   ; Status message to show
+    )
+  #+end_src
+
+** 4. UI Layer (The Renderer)
+- **Decision: Drop `magit-section`.**
+  - **Reasoning:** `magit-section` maintains its own internal state (folding, cursor position). In a "redraw-on-change" architecture, syncing Magit's state with our App State is painful and brittle.
+  - **New Approach:** Custom "Game Loop" rendering.
+- **Mechanism:**
+  1. `erase-buffer`
+  2. Insert Header (Date, Summary).
+  3. Loop through `view-model` intervals.
+  4. Insert each line.
+  5. **Selection:** If `interval.id == state.selected-id`, apply a specific face (background color) to the whole line.
+- **Benefits:**
+  - "Row Selection" instead of "Cursor Position".
+  - We can use `overlay` or `text-properties` with `(:extend t)` to highlight the full width of the row.
+  - Navigation (`j`/`k`) simply updates `state.selected-id` and triggers a redraw. We don't move the Emacs point manually.
+
+** 5. Controller Layer (Input)
+- **Responsibility:** Mapping keybindings to State Transitions.
+- **Functions:**
+  - `(chronos-cmd-next-row)`: Updates `selected-id` to the next interval in the list.
+  - `(chronos-cmd-clock-in)`: Reads `selected-id`, prompts user, calls Domain Layer to add event, updates State, triggers Save & Render.
+
+* Implementation Plan
+
+1. **Define the State Struct:** Create the container for the application.
+2. **Port Domain Logic:** Ensure `org-chronos-core.el` functions are pure and accept/return lists, not reading from disk.
+3. **Build the Renderer:** Create the function that draws the buffer from the State struct (without Magit).
+4. **Build the Controller:** Wire up `j`/`k` to change the selection in the State and redraw.
+5. **Wire Persistence:** Ensure actions that modify `events` in the State also trigger a write to disk.
