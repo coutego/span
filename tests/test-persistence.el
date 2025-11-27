@@ -3,7 +3,12 @@
 (require 'ert)
 (require 'f)
 (require 'ts)
+(require 'org-chronos-core) ;; Ensure core is loaded
 (require 'org-chronos-fs)
+
+;; Declare the variable as special so the let-binding in tests is dynamic,
+;; allowing the called functions in org-chronos-fs to see the temporary value.
+(defvar org-chronos-storage-directory)
 
 (ert-deftest test-chronos-fs-round-trip ()
   "Test writing and reading events."

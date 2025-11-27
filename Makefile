@@ -15,4 +15,5 @@ test:
 		--eval "(add-to-list 'load-path \".\")" \
 		-l tests/test-persistence.el \
 		-l tests/test-domain.el \
+		-l tests/test-state.el \
 		-f ert-run-tests-batch-and-exit

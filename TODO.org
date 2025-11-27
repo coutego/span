@@ -24,13 +24,13 @@ Create `tests/test-domain.el`:
 - Test splitting logic.
 
 * Refactor: Phase 3 - Application State
-** TODO Define State Struct and Reducers
+** DONE Define State Struct and Reducers
 Create `org-chronos-state.el`:
 - Define `chronos-state` struct.
 - Implement `(chronos-state-init date)` -> state
 - Implement `(chronos-state-next-row state)` -> new state
 - Implement `(chronos-state-prev-row state)` -> new state
-** TODO Test State Transitions
+** DONE Test State Transitions
 Create `tests/test-state.el`:
 - Test navigation updates `selected-id`.
 - Test initialization loads events (mocked).
