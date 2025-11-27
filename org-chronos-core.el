@@ -184,21 +184,5 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
           :active ,active-interval
           :state ,state)))))
 
-;; -----------------------------------------------------------------------------
-;; Legacy / Service Layer (To be deprecated or moved to Controller)
-;; -----------------------------------------------------------------------------
-
-;; Note: These functions are kept temporarily to avoid breaking the current UI
-;; until the Controller layer is fully refactored. They now wrap the pure functions.
-
-(declare-function org-chronos-load-events "org-chronos-core")
-(declare-function org-chronos-save-events "org-chronos-core")
-
-(defun org-chronos-compute-day (&optional date)
-  "Compute the day view model. Loads and reduces."
-  (let* ((d (or date (ts-now)))
-         (events (org-chronos-load-events d)))
-    (org-chronos-reduce-events events)))
-
 (provide 'org-chronos-core)
 ;;; org-chronos-core.el ends here

@@ -4,6 +4,7 @@
 (require 'org-id)
 (require 'ts)
 (require 'org-chronos-core)
+(require 'org-chronos-fs) ;; Required for IO operations
 (require 'org-chronos-lookup) ;; Connects View to Controller
 ;; We will require UI at the end or via autoload to avoid circularity issues during load,
 ;; but strictly speaking, input needs to know about the status refresh.
