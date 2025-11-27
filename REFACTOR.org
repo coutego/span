@@ -1,0 +1,21 @@
+#+title: Refactor design
+
+The package is getting a bit too tricky to maintain, so we will try to
+make it testable and modular, descomposing the functionality in several
+layers, according to the following general principles
+- We will use immutable data structures in the way of Clojure, even
+  if Elisp will require deep-copies. The daily logs are small enough that
+  the data structures should be also small
+- The UI will be redrawn every time there is a change of the state. Similar to the
+  previous point, this is very wasteful, but given the small number of elements to be
+  shown, it should be fast enough
+- The main layers would be:
+  - FS layer, which takes care of persisting from and to files (buffers) the time log
+  - Day log layer, which takes care of the day log logical representation in memory
+    and the modifications on this structure (no modifications, in fact, but creation
+    of new versions of the structure - the layer are the modifications)
+  - UI layer, which keeps a representation of the logical state of the UI (
+    this will be the Day log structure + additional information about the status
+    of the UI)
+  - Controller layer, which takes input from the user and creates a new version of the
+    UI Layer structure and renders each new version
