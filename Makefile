@@ -17,4 +17,5 @@ test:
 		-l tests/test-domain.el \
 		-l tests/test-state.el \
 		-l tests/test-ui.el \
+		-l tests/test-controller.el \
 		-f ert-run-tests-batch-and-exit

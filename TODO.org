@@ -47,10 +47,10 @@ Create `tests/test-ui.el`:
 - Assert correct line has the 'selected' face.
 
 * Refactor: Phase 5 - Controller & Integration
-** TODO Implement Controller and Main Loop
+** DONE Implement Controller and Main Loop
 Create `org-chronos-controller.el`:
 - Define keymap.
 - Implement command functions that call State reducers and trigger Render.
 - Implement `(chronos-refresh)` which reloads FS -> State -> Render.
-** TODO Wire Persistence to Actions
+** DONE Wire Persistence to Actions
 Ensure that commands which modify the event list (Clock In, Stop, etc.) trigger `chronos-fs-write`.
