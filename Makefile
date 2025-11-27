@@ -1,11 +1,17 @@
 EMACS ?= emacs
 
-# Attempt to load packages from user's emacs configuration or assume they are in load-path.
-# We initialize package to ensure dependencies like 'f', 'ts', 'dash' are available.
+.PHONY: test
+
+# We configure package.el to use MELPA and ensure dependencies (f, ts, dash) are installed.
 test:
 	$(EMACS) -batch \
 		--eval "(require 'package)" \
+		--eval "(add-to-list 'package-archives '(\"melpa\" . \"https://melpa.org/packages/\") t)" \
 		--eval "(package-initialize)" \
+		--eval "(unless (and (package-installed-p 'f) (package-installed-p 'ts) (package-installed-p 'dash)) \
+				  (package-refresh-contents) \
+				  (dolist (pkg '(f ts dash)) \
+				    (unless (package-installed-p pkg) (package-install pkg))))" \
 		--eval "(add-to-list 'load-path \".\")" \
 		-l tests/test-persistence.el \
 		-l tests/test-domain.el \
