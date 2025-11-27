@@ -40,6 +40,25 @@
 ;; Domain Layer (Pure Logic)
 ;; -----------------------------------------------------------------------------
 
+(defun org-chronos--event-priority (type)
+  "Return sorting priority for event TYPE. Lower comes first when times are equal."
+  (pcase type
+    (:day-start 0)
+    (:stop 10)
+    (:interruption 20)
+    (:ctx-switch 30)
+    (:tick 40)
+    (_ 50)))
+
+(defun org-chronos--event-less-p (a b)
+  "Return t if event A should come before event B."
+  (let ((ta (plist-get a :time))
+        (tb (plist-get b :time)))
+    (if (= ta tb)
+        (< (org-chronos--event-priority (plist-get a :type))
+           (org-chronos--event-priority (plist-get b :type)))
+      (< ta tb))))
+
 (defun org-chronos-add-event (events type payload time)
   "Return a new list of events with the added event, sorted.
 EVENTS is the current list of event plists.
@@ -49,7 +68,7 @@ TIME can be a `ts' struct or float."
   (let* ((ts-val (if (ts-p time) (ts-unix time) time))
          (new-evt `(:time ,ts-val :type ,type :payload ,payload)))
     (sort (cons new-evt (copy-sequence events))
-          (lambda (a b) (< (plist-get a :time) (plist-get b :time))))))
+          #'org-chronos--event-less-p)))
 
 (defun org-chronos-delete-event (events timestamp)
   "Return a new list of events with the event at TIMESTAMP removed.
@@ -67,7 +86,7 @@ Re-sorts the list."
                                (plist-put (copy-sequence evt) :time new-ts)
                              evt))
                          events)))
-    (sort updated (lambda (a b) (< (plist-get a :time) (plist-get b :time))))))
+    (sort updated #'org-chronos--event-less-p)))
 
 (defun org-chronos--ts-from-log (time-val)
   "Convert log time (float or struct) to a `ts' object."
