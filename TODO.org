@@ -1,11 +1,11 @@
 #+title: To be implemented
 
 * Refactor: Phase 1 - Persistence Layer
-** TODO Implement pure FS functions
+** DONE Implement pure FS functions
 Create `org-chronos-fs.el` (or add to core) with:
 - `(chronos-fs-read date)`: Returns list of sexps.
 - `(chronos-fs-write date events)`: Writes list to file.
-** TODO Test Persistence Layer
+** DONE Test Persistence Layer
 Create `tests/test-persistence.el`:
 - Test round-trip serialization.
 - Test handling of empty files or malformed lines.
