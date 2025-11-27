@@ -131,3 +131,28 @@
       (should (= (length ticks) 1))
       (should (eq (org-chronos-event-type (car ticks)) :tick))
       (should (equal (plist-get (org-chronos-event-payload (car ticks)) :note) "Bookmark")))))
+
+(ert-deftest test-chronos-bug-fill-gap-zero-duration ()
+  "Reproduce bug where filling a gap creates a zero-duration task and keeps the gap.
+This happens if the new CTX_SWITCH event is sorted before the existing STOP event at the same timestamp."
+  (let* ((t1 1000.0)
+         (t2 2000.0)
+         ;; Initial state: Task A stops at T2. Gap follows.
+         (events `((:time ,t1 :type :start :payload (:title "Task A"))
+                   (:time ,t2 :type :stop)))
+         ;; User fills gap at T2 with Task B
+         (new-events (org-chronos-add-event events :ctx-switch '(:title "Task B") t2))
+         (view-model (org-chronos-reduce-events new-events)))
+    
+    (let ((intervals (plist-get view-model :intervals))
+          (active (plist-get view-model :active)))
+      
+      ;; Expectation: Task B should be active (replacing the gap)
+      (should active)
+      (should (equal (plist-get (org-chronos-interval-payload active) :title) "Task B"))
+      
+      ;; Ensure no zero-duration interval for Task B in the closed intervals
+      (dolist (int intervals)
+        (let ((title (plist-get (org-chronos-interval-payload int) :title)))
+          (when (equal title "Task B")
+            (should (> (org-chronos-interval-duration int) 0))))))))
