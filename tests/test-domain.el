@@ -156,3 +156,38 @@ This happens if the new CTX_SWITCH event is sorted before the existing STOP even
         (let ((title (plist-get (org-chronos-interval-payload int) :title)))
           (when (equal title "Task B")
             (should (> (org-chronos-interval-duration int) 0))))))))
+
+(ert-deftest test-chronos-bug-fill-gap-removes-gap ()
+  "Reproduce bug where filling a gap leaves a zero-duration gap interval.
+Scenario: Task A stops at T2. Gap until T3. User fills gap starting at T2."
+  (let* ((t1 1000.0)
+         (t2 2000.0)
+         (t3 3000.0)
+         ;; Initial: Task A (1000-2000), Gap (2000-3000), Task C (3000-...)
+         (events `((:time ,t1 :type :start :payload (:title "Task A"))
+                   (:time ,t2 :type :stop)
+                   (:time ,t3 :type :start :payload (:title "Task C"))))
+         ;; Fill gap at T2 with Task B
+         (new-events (org-chronos-add-event events :ctx-switch '(:title "Task B") t2))
+         (view-model (org-chronos-reduce-events new-events)))
+    
+    (let ((intervals (plist-get view-model :intervals)))
+      ;; Expected: Task A (1000-2000), Task B (2000-3000), Task C (3000-...)
+      ;; Bug: Task A, Gap (0s), Task B, Task C
+      
+      (should (= (length intervals) 3))
+      (let ((int-a (nth 0 intervals))
+            (int-b (nth 1 intervals))
+            (int-c (nth 2 intervals)))
+        
+        ;; Check Task A
+        (should (equal (plist-get (org-chronos-interval-payload int-a) :title) "Task A"))
+        (should (= (org-chronos-interval-duration int-a) 1000))
+        
+        ;; Check Task B (Should NOT be a gap)
+        (should-not (eq (org-chronos-interval-type int-b) :gap))
+        (should (equal (plist-get (org-chronos-interval-payload int-b) :title) "Task B"))
+        (should (= (org-chronos-interval-duration int-b) 1000))
+        
+        ;; Check Task C
+        (should (equal (plist-get (org-chronos-interval-payload int-c) :title) "Task C"))))))
