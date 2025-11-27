@@ -2,12 +2,14 @@
 
 ;; Copyright (C) 2023
 ;; Author: Org-Chronos Dev
-;; Version: 0.1.0
+;; Version: 0.2.0
 ;; Package-Requires: ((emacs "27.1") (ts "0.2") (dash "2.19") (f "0.20"))
 
 ;;; Commentary:
-;; Implements Phase 1: The Logger and Data Reducer.
-;; Handles immutable event logging and transforming logs into time intervals.
+;; Implements the Data Layers:
+;; 1. FS Layer: Reading/Writing events to disk.
+;; 2. Domain Layer: Pure functions for event manipulation and day reduction.
+;; 3. Service Layer: Orchestration of FS and Domain layers.
 
 ;;; Code:
 
@@ -27,8 +29,7 @@
 (defcustom org-chronos-storage-directory
   (expand-file-name "chronos-logs/" (or (bound-and-true-p org-roam-directory)
                                         user-emacs-directory))
-  "Directory where daily logs are stored.
-Defaults to `chronos-logs` inside your `org-roam-directory`."
+  "Directory where daily logs are stored."
   :type 'directory
   :group 'org-chronos)
 
@@ -53,13 +54,12 @@ Defaults to `chronos-logs` inside your `org-roam-directory`."
   start-timestamp-raw) ; float (original log timestamp for identification)
 
 ;; -----------------------------------------------------------------------------
-;; File I/O (The Logger)
+;; 1. FS Layer (Persistence)
 ;; -----------------------------------------------------------------------------
 
-(defun org-chronos--log-path (&optional date)
+(defun org-chronos--log-path (date)
   "Return the full path to the log file for DATE.
-DATE can be a `ts' struct, a time string, or nil (defaults to today).
-Format: YYYY-MM-DD.log."
+DATE can be a `ts' struct, a time string, or nil (defaults to today)."
   (let* ((ts-obj (cond ((null date) (ts-now))
                        ((ts-p date) date)
                        ((stringp date) (ts-parse date))
@@ -67,112 +67,93 @@ Format: YYYY-MM-DD.log."
          (filename (format "%s.log" (ts-format "%Y-%m-%d" ts-obj))))
     (f-join org-chronos-storage-directory filename)))
 
-(defun org-chronos-log-event (type &optional payload time)
-  "Append a new event to the daily log.
-TYPE: Keyword (e.g., :ctx-switch)
-PAYLOAD: Plist of data
-TIME: Optional `ts' struct. Defaults to now."
-  (unless (f-exists-p org-chronos-storage-directory)
-    (f-mkdir org-chronos-storage-directory))
+(defun org-chronos-load-events (date)
+  "Load events for DATE from disk.
+Returns a sorted list of event plists."
+  (let ((path (org-chronos--log-path date)))
+    (if (f-exists-p path)
+        (with-temp-buffer
+          (insert-file-contents path)
+          (goto-char (point-min))
+          (let ((events '()))
+            (condition-case err
+                (while (not (eobp))
+                  (let ((line (string-trim (thing-at-point 'line t))))
+                    (unless (string-empty-p line)
+                      (unless (string-prefix-p ";;" line)
+                        (push (read line) events))))
+                  (forward-line 1))
+              (error (message "Org-Chronos: Syntax error in log %s" err)))
+            ;; Ensure sorted by time
+            (sort (nreverse events)
+                  (lambda (a b) (< (plist-get a :time) (plist-get b :time))))))
+      '())))
 
-  (let* ((now (or time (ts-now)))
-         (file (org-chronos--log-path now))
-         ;; Ensure we store time as float for clean serialization
-         (timestamp (ts-unix now))
-         (event-data `(:time ,timestamp :type ,type :payload ,payload)))
-
-    ;; "Pretty-prints the event on a single new line"
-    (f-append-text (format "%S\n" event-data) coding-system-for-write file)
-    (message "Org-Chronos: Logged %s" type)))
-
-(defun org-chronos--write-log (file-path events)
-  "Overwrite FILE-PATH with EVENTS."
-  (with-temp-file file-path
-    (dolist (evt events)
-      (insert (format "%S\n" evt)))))
-
-(defun org-chronos-delete-event (date timestamp)
-  "Delete the event at TIMESTAMP from the log of DATE."
-  (let* ((path (org-chronos--log-path date))
-         (raw-events (org-chronos--read-raw-log path))
-         (new-events (cl-remove-if (lambda (evt)
-                                     (= (plist-get evt :time) timestamp))
-                                   raw-events)))
-    (org-chronos--write-log path new-events)
-    (message "Org-Chronos: Deleted event at %f" timestamp)))
-
-(defun org-chronos-update-event-time (date old-timestamp new-timestamp)
-  "Update the timestamp of an event."
-  (let* ((path (org-chronos--log-path date))
-         (raw-events (org-chronos--read-raw-log path))
-         (target (cl-find-if (lambda (evt)
-                               (= (plist-get evt :time) old-timestamp))
-                             raw-events)))
-    (if target
-        (progn
-          (setf (plist-get target :time) new-timestamp)
-          ;; We write back; sorting happens on read
-          (org-chronos--write-log path raw-events)
-          (message "Org-Chronos: Updated event time."))
-      (message "Org-Chronos: Event not found to update."))))
-
-(defun org-chronos--read-raw-log (file-path)
-  "Read the log file and return a list of raw events.
-Handles file reading manually to support the 'one s-exp per line' format.
-Sorts events by time to ensure correct reduction."
-  (when (f-exists-p file-path)
-    (with-temp-buffer
-      (insert-file-contents file-path)
-      (goto-char (point-min))
-      (let ((events '()))
-        (condition-case err
-            (while (not (eobp))
-              (let ((line (string-trim (thing-at-point 'line t))))
-                (unless (string-empty-p line)
-                  (unless (string-prefix-p ";;" line) ; Ignore comments
-                    (push (read line) events))))
-              (forward-line 1))
-          (error (message "Org-Chronos: Syntax error in log %s" err)))
-        ;; Sort by time to handle out-of-order insertions
-        (sort (nreverse events)
-              (lambda (a b) (< (plist-get a :time) (plist-get b :time))))))))
+(defun org-chronos-save-events (date events)
+  "Write EVENTS to the log file for DATE.
+Overwrites the file with the provided list."
+  (let ((path (org-chronos--log-path date)))
+    (unless (f-exists-p (file-name-directory path))
+      (f-mkdir (file-name-directory path)))
+    (with-temp-file path
+      (dolist (evt events)
+        (insert (format "%S\n" evt))))))
 
 ;; -----------------------------------------------------------------------------
-;; The Reducer (Compute Day)
+;; 2. Domain Layer (Pure Logic)
 ;; -----------------------------------------------------------------------------
+
+(defun org-chronos-pure-add-event (events type payload time)
+  "Return a new list of events with the added event, sorted.
+TIME can be a `ts' struct or float."
+  (let* ((ts-val (if (ts-p time) (ts-unix time) time))
+         (new-evt `(:time ,ts-val :type ,type :payload ,payload)))
+    (sort (cons new-evt (copy-sequence events))
+          (lambda (a b) (< (plist-get a :time) (plist-get b :time))))))
+
+(defun org-chronos-pure-delete-event (events timestamp)
+  "Return a new list of events with the event at TIMESTAMP removed."
+  (cl-remove-if (lambda (evt)
+                  (= (plist-get evt :time) timestamp))
+                events))
+
+(defun org-chronos-pure-update-event (events old-ts new-ts)
+  "Return a new list of events with the event at OLD-TS moved to NEW-TS.
+Re-sorts the list."
+  (let ((updated (mapcar (lambda (evt)
+                           (if (= (plist-get evt :time) old-ts)
+                               (plist-put (copy-sequence evt) :time new-ts)
+                             evt))
+                         events)))
+    (sort updated (lambda (a b) (< (plist-get a :time) (plist-get b :time))))))
 
 (defun org-chronos--ts-from-log (time-val)
   "Convert log time (float or struct) to a `ts' object."
   (cond
    ((ts-p time-val) time-val)
    ((numberp time-val)
-    ;; FIX: ts-from-unix does not exist in all versions.
-    ;; Use standard Emacs formatting and parse back into ts struct.
     (ts-parse (format-time-string "%Y-%m-%d %H:%M:%S" (seconds-to-time time-val))))
    (t (error "Unknown time format in log: %S" time-val))))
 
-(defun org-chronos-compute-day (&optional date)
-  "Pure function that reads the log and reduces it into Intervals.
+(defun org-chronos-reduce-day (events)
+  "Pure function that reduces a list of EVENTS into a Day View Model.
 Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
-  (let* ((path (org-chronos--log-path date))
-         (raw-events (org-chronos--read-raw-log path))
-         (intervals '())
-         (ticks '())
-         (current-start-event nil)
-         (has-history nil)) ;; Track if we have seen any state-changing events
+  (let ((intervals '())
+        (ticks '())
+        (current-start-event nil)
+        (has-history nil))
 
-    ;; Iterate through events to build intervals
-    (--each raw-events
+    (--each events
       (let* ((evt-time (org-chronos--ts-from-log (plist-get it :time)))
              (evt-type (plist-get it :type))
              (evt-payload (plist-get it :payload)))
 
         (cond
-         ;; Case 1: TICK - Does not alter flow, just bookmarks time
+         ;; Case 1: TICK
          ((eq evt-type :tick)
           (push (org-chronos-event-create :time evt-time :type evt-type :payload evt-payload) ticks))
 
-         ;; Case 2: STOP - Closes current interval, starts nothing
+         ;; Case 2: STOP
          ((eq evt-type :stop)
           (setq has-history t)
           (when current-start-event
@@ -187,10 +168,10 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
                     intervals)))
           (setq current-start-event nil))
 
-         ;; Case 3: STATE CHANGE (Day Start, Ctx Switch, Interruption)
+         ;; Case 3: STATE CHANGE
          (t
           (setq has-history t)
-          ;; If there was an active context, close it first
+          ;; Close previous
           (when current-start-event
             (let ((start-ts (org-chronos--ts-from-log (plist-get current-start-event :time))))
               (push (org-chronos-interval-create
@@ -202,8 +183,7 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
                      :start-timestamp-raw (plist-get current-start-event :time))
                     intervals)))
 
-          ;; Check for gap if we were stopped (current-start-event is nil)
-          ;; but there are previous intervals.
+          ;; Check for gap
           (unless current-start-event
             (when intervals
               (let* ((last-int (car intervals))
@@ -215,13 +195,12 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
                          :duration (- (ts-unix evt-time) (ts-unix last-end))
                          :type :gap
                          :payload nil
-                         :start-timestamp-raw nil) ;; Gaps don't have a start event
+                         :start-timestamp-raw nil)
                         intervals)))))
 
-          ;; Set this event as the start of the NEW context
           (setq current-start-event it)))))
 
-    ;; Handle currently active task (if day hasn't stopped yet)
+    ;; Handle Active
     (let ((active-interval nil))
       (if current-start-event
           (let* ((start-ts (org-chronos--ts-from-log (plist-get current-start-event :time)))
@@ -229,12 +208,12 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
             (setq active-interval
                   (org-chronos-interval-create
                    :start-time start-ts
-                   :end-time nil ; Nil indicates "ongoing"
+                   :end-time nil
                    :duration (- (ts-unix now) (ts-unix start-ts))
                    :type (plist-get current-start-event :type)
                    :payload (plist-get current-start-event :payload)
                    :start-timestamp-raw (plist-get current-start-event :time))))
-        ;; If stopped, check for gap until NOW
+        ;; Gap until NOW
         (when intervals
           (let* ((last-int (car intervals))
                  (last-end (org-chronos-interval-end-time last-int))
@@ -249,7 +228,7 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
                      :payload nil
                      :start-timestamp-raw nil))))))
 
-      ;; Determine Global State
+      ;; Determine State
       (let ((state (cond
                     (current-start-event
                      (if (eq (plist-get current-start-event :type) :interruption)
@@ -258,11 +237,42 @@ Returns a plist: (:intervals [...] :ticks [...] :active [...] :state ...)"
                     (has-history :finished)
                     (t :pre-start))))
 
-        ;; Return structured data
         `(:intervals ,(nreverse intervals)
           :ticks ,(nreverse ticks)
           :active ,active-interval
           :state ,state)))))
+
+;; -----------------------------------------------------------------------------
+;; 3. Service Layer (Orchestration)
+;; -----------------------------------------------------------------------------
+
+(defun org-chronos-log-event (type &optional payload time)
+  "Log an event. Loads, adds, and saves."
+  (let* ((ts-obj (or time (ts-now)))
+         (events (org-chronos-load-events ts-obj))
+         (new-events (org-chronos-pure-add-event events type payload ts-obj)))
+    (org-chronos-save-events ts-obj new-events)
+    (message "Org-Chronos: Logged %s" type)))
+
+(defun org-chronos-delete-event (date timestamp)
+  "Delete an event. Loads, removes, and saves."
+  (let* ((events (org-chronos-load-events date))
+         (new-events (org-chronos-pure-delete-event events timestamp)))
+    (org-chronos-save-events date new-events)
+    (message "Org-Chronos: Deleted event at %f" timestamp)))
+
+(defun org-chronos-update-event-time (date old-ts new-ts)
+  "Update an event timestamp. Loads, updates, and saves."
+  (let* ((events (org-chronos-load-events date))
+         (new-events (org-chronos-pure-update-event events old-ts new-ts)))
+    (org-chronos-save-events date new-events)
+    (message "Org-Chronos: Updated event time.")))
+
+(defun org-chronos-compute-day (&optional date)
+  "Compute the day view model. Loads and reduces."
+  (let* ((d (or date (ts-now)))
+         (events (org-chronos-load-events d)))
+    (org-chronos-reduce-day events)))
 
 (provide 'org-chronos-core)
 ;;; org-chronos-core.el ends here
