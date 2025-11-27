@@ -41,3 +41,21 @@
       ;; Prev -> Back to "id-1"
       (org-chronos-state-prev-row state)
       (should (equal (org-chronos-state-selected-id state) "id-1")))))
+
+(ert-deftest test-chronos-state-update-view-model ()
+  "Test that updating the view model reflects changes in events."
+  (cl-letf (((symbol-function 'org-chronos-fs-read) #'mock-fs-read))
+    (let ((state (org-chronos-state-init)))
+      ;; Initially 3 events, state is :active (from mock)
+      (should (eq (plist-get (org-chronos-state-view-model state) :state) :active))
+      
+      ;; Modify events in state (simulate adding a STOP event)
+      (let* ((events (org-chronos-state-events state))
+             (new-events (org-chronos-add-event events :stop nil 10180.0)))
+        (setf (org-chronos-state-events state) new-events)
+        
+        ;; Update VM
+        (org-chronos-state-update-view-model state)
+        
+        ;; State should now be :finished
+        (should (eq (plist-get (org-chronos-state-view-model state) :state) :finished))))))
