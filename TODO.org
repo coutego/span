@@ -36,11 +36,11 @@ Create `tests/test-state.el`:
 - Test initialization loads events (mocked).
 
 * Refactor: Phase 4 - UI Layer (Custom Renderer)
-** TODO Implement Custom Renderer
+** DONE Implement Custom Renderer
 Create `org-chronos-render.el`:
 - `(chronos-render-buffer state)`: Erases buffer and draws text.
 - Implement row highlighting using text properties (`:extend t`, background face) for the `selected-id`.
-** TODO Test UI Rendering
+** DONE Test UI Rendering
 Create `tests/test-ui.el`:
 - Render a mock state to a temp buffer.
 - Assert buffer contains expected strings.
