@@ -1,2 +1,56 @@
 #+title: To be implemented
 
+* Refactor: Phase 1 - Persistence Layer
+** TODO Implement pure FS functions
+Create `org-chronos-fs.el` (or add to core) with:
+- `(chronos-fs-read date)`: Returns list of sexps.
+- `(chronos-fs-write date events)`: Writes list to file.
+** TODO Test Persistence Layer
+Create `tests/test-persistence.el`:
+- Test round-trip serialization.
+- Test handling of empty files or malformed lines.
+
+* Refactor: Phase 2 - Domain Layer
+** TODO Refactor Core to Pure Functions
+Ensure `org-chronos-core.el` contains:
+- `(chronos-add-event events type payload time)` -> new list
+- `(chronos-delete-event events timestamp)` -> new list
+- `(chronos-update-event events old-ts new-ts)` -> new list
+- `(chronos-reduce-events events)` -> view-model plist
+** TODO Test Domain Logic
+Create `tests/test-domain.el`:
+- Test adding/deleting events maintains sort order.
+- Test reduction logic (intervals, gaps, active task).
+- Test splitting logic.
+
+* Refactor: Phase 3 - Application State
+** TODO Define State Struct and Reducers
+Create `org-chronos-state.el`:
+- Define `chronos-state` struct.
+- Implement `(chronos-state-init date)` -> state
+- Implement `(chronos-state-next-row state)` -> new state
+- Implement `(chronos-state-prev-row state)` -> new state
+** TODO Test State Transitions
+Create `tests/test-state.el`:
+- Test navigation updates `selected-id`.
+- Test initialization loads events (mocked).
+
+* Refactor: Phase 4 - UI Layer (Custom Renderer)
+** TODO Implement Custom Renderer
+Create `org-chronos-render.el`:
+- `(chronos-render-buffer state)`: Erases buffer and draws text.
+- Implement row highlighting using text properties (`:extend t`, background face) for the `selected-id`.
+** TODO Test UI Rendering
+Create `tests/test-ui.el`:
+- Render a mock state to a temp buffer.
+- Assert buffer contains expected strings.
+- Assert correct line has the 'selected' face.
+
+* Refactor: Phase 5 - Controller & Integration
+** TODO Implement Controller and Main Loop
+Create `org-chronos-controller.el`:
+- Define keymap.
+- Implement command functions that call State reducers and trigger Render.
+- Implement `(chronos-refresh)` which reloads FS -> State -> Render.
+** TODO Wire Persistence to Actions
+Ensure that commands which modify the event list (Clock In, Stop, etc.) trigger `chronos-fs-write`.
