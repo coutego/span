@@ -4,6 +4,9 @@
 (require 'ts)
 (require 'org-chronos-core)
 
+;; Ensure the compiler knows this is a dynamic variable so let-binding works in tests
+(defvar org-chronos-storage-directory)
+
 (defun org-chronos-fs--log-path (date)
   "Return the full path to the log file for DATE.
 DATE can be a `ts' struct, a time string, or nil (defaults to today)."

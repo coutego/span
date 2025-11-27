@@ -4,6 +4,10 @@
 (require 'ts)
 (require 'org-chronos-core)
 
+;; Helper to replace missing ts-from-unix
+(defun test-ts-from-unix (unix-time)
+  (ts-parse (format-time-string "%Y-%m-%d %H:%M:%S" (seconds-to-time unix-time))))
+
 (ert-deftest test-chronos-add-event-sorting ()
   "Test that adding events maintains chronological order."
   (let* ((events '())
@@ -48,7 +52,7 @@
          (now 1060.0)
          (events `((:time ,t1 :type :start :payload (:title "Active"))))
          ;; Pass 'now' explicitly to control the test
-         (view-model (org-chronos-reduce-events events (ts-from-unix now))))
+         (view-model (org-chronos-reduce-events events (test-ts-from-unix now))))
     
     (let ((active (plist-get view-model :active))
           (state (plist-get view-model :state)))
