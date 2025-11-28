@@ -7,3 +7,12 @@ the new one is added, but the <non attributed> is kept, with zero minutes
 * TODO Bug: command 'f' not shown in the menu when selecting a non attributed task
 When the cursor is over a line with a '<non attributed>' period, no 'f'
 is shown in the menu, even though 'f' works as a keystroke
+
+* TODO Bug: no commands available in status on new day
+If I run status on the current empty day I get this:
+
+
+ORG-CHRONOS :: Friday, November 28, 2025
+============================================================
+
+[ TIMELINE ]
