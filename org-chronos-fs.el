@@ -4,8 +4,17 @@
 (require 'ts)
 (require 'org-chronos-core)
 
-;; Ensure the compiler knows this is a dynamic variable so let-binding works in tests
-(defvar org-chronos-storage-directory)
+(defgroup org-chronos nil
+  "Time tracking based on Event Sourcing."
+  :group 'org)
+
+(defcustom org-chronos-storage-directory
+  (expand-file-name "chronos-logs/" (or (bound-and-true-p org-roam-directory)
+                                        user-emacs-directory))
+  "Directory where daily logs are stored.
+Defaults to `chronos-logs` inside your `org-roam-directory`."
+  :type 'directory
+  :group 'org-chronos)
 
 (defun org-chronos-fs--log-path (date)
   "Return the full path to the log file for DATE.
