@@ -18,6 +18,12 @@
 
 ;;; Code:
 
+;; Ensure the package directory is in load-path so dependencies can be found
+;; when evaluating this buffer or loading this file directly.
+(let ((dir (file-name-directory (or load-file-name buffer-file-name))))
+  (when dir
+    (add-to-list 'load-path dir)))
+
 ;; 1. Core Domain & Persistence
 (require 'org-chronos-core)
 (require 'org-chronos-fs)
