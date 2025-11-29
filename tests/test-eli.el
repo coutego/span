@@ -34,6 +34,10 @@
          (gethash key (oref self data))))
 
 ;; 3. Component with Injection
+
+(eli-definterface t-service-interface
+  (do-work (key val)))
+
 (eli-defcomponent t-service (t-service-interface)
   "Service component."
   :slots ((counter :initform 0))
@@ -44,9 +48,6 @@
            (t-logger/log logger (format "Working on %s" key))
            (t-repo/save repo key val)
            (cl-incf (oref self counter))))
-
-(eli-definterface t-service-interface
-  (do-work (key val)))
 
 ;;; ============================================================================
 ;;; Tests

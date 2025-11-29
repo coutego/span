@@ -273,13 +273,15 @@ This allows disambiguation when multiple interfaces define the same method name.
                     result))
           ;; Unqualified: generate for all interfaces that define this method
           (dolist (iface interfaces)
-            (let* ((iface-spec (gethash iface eli--interfaces))
-                   (iface-methods (eli-interface-methods iface-spec)))
-              (when (assq base-name iface-methods)
-                (push `(cl-defmethod ,(eli--interface-method-symbol iface base-name)
-                         ((self ,impl-name) ,@method-args)
-                         ,@method-body)
-                      result)))))))
+            (let ((iface-spec (gethash iface eli--interfaces)))
+              (unless iface-spec
+                (error "Interface %s is not defined. Interfaces must be defined before implementations." iface))
+              (let ((iface-methods (eli-interface-methods iface-spec)))
+                (when (assq base-name iface-methods)
+                  (push `(cl-defmethod ,(eli--interface-method-symbol iface base-name)
+                           ((self ,impl-name) ,@method-args)
+                           ,@method-body)
+                        result))))))))
     (nreverse result)))
 
 ;;; ============================================================================
