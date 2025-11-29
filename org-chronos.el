@@ -291,17 +291,23 @@
          (active (chronos--compute-active events))
          (all-intervals (append intervals (when active (list active))))
          (decoded (decode-time date))
-         (day-start (float-time (encode-time 0 0 0
-                                             (nth 3 decoded)   ; day
-                                             (nth 4 decoded)   ; month
-                                             (nth 5 decoded)))) ; year
+         (midnight (float-time (encode-time 0 0 0
+                                            (nth 3 decoded)   ; day
+                                            (nth 4 decoded)   ; month
+                                            (nth 5 decoded)))) ; year
+         ;; Determine effective start time: first :day-start event or midnight
+         (day-start-event (cl-find-if (lambda (e) (eq (chronos-event-type e) :day-start))
+                                      events))
+         (effective-start (if day-start-event
+                              (chronos-event-time day-start-event)
+                            midnight))
          gaps)
     (when all-intervals
       (let ((first-interval (car all-intervals)))
-        (when (> (chronos-interval-start first-interval) day-start)
+        (when (> (chronos-interval-start first-interval) effective-start)
           (push (chronos-interval-create
                  :id (org-id-uuid)
-                 :start day-start
+                 :start effective-start
                  :end (chronos-interval-start first-interval)
                  :title "[Gap]"
                  :type 'gap)
