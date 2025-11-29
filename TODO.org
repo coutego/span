@@ -1,5 +1,24 @@
 #+title: To be implemented
 
+* TODO Refactor: move package functionality to org-chronos.el
+There is code hanging around that should be in org-chronos.
+For example:
+
+(defgroup org-chronos nil
+  "Event-sourced time tracking for Org-mode."
+  :group 'org
+  :prefix "chronos-")
+
+(defcustom chronos-log-directory (expand-file-name "chronos-logs" user-emacs-directory)
+  "Directory for storing chronos event logs."
+  :type 'directory
+  :group 'org-chronos)
+
+(defconst chronos-event-priorities
+  '(:day-start 0 :stop 10 :interruption 20 :ctx-switch 30 :tick 40)
+  "Event type priorities for sorting.")
+
+#+end_src
 * TODO Feature: ask for time when starting the day
 When executing the command to start the day, ask for the time that it should be started at, defaulting to the current time and allowing both an absolute time (HH:MM)
 or a relative time (-20) (indicating 20 minutes ago)

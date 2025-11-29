@@ -14,5 +14,6 @@ test:
 				    (unless (package-installed-p pkg) (package-install pkg))))" \
 		--eval "(add-to-list 'load-path \".\")" \
 		-l tests/test-eli.el \
-		-l tests/test-org-chronos.el \
+		-l tests/test-org-chronos-persistence.el \
+		-l tests/test-org-chronos-event-log.el \
 		-f ert-run-tests-batch-and-exit
