@@ -1,8 +1,44 @@
 #+title: To be implemented
 
 
-* DONE Feature: implement "Go to heading"
+* TODO Bug: "Go to heading" doesn't work
+I have this task:
+
+#+begin_src org
+,* DONE Feature: implement "Go to heading"
 :PROPERTIES:
-:CHRONOS_ID: e45a2072-1869-4862-bf9c-4ce62c23fb2f
+:CHRONOS_ID: 2fe9501e-a005-42f7-9c15-7605bd8706ee
 :END:
 I get an error "Go to heading not yet implemented"
+#+end_src
+
+There is a CHRONOS_ID because I run chronos-clock-in-current-heading. Nevertheless,
+when I'm on the task:
+
+#+begin_quote
+══════════════════════════════════════════
+              ORG-CHRONOS
+══════════════════════════════════════════
+
+  Saturday, November 29, 2025
+
+  Status: Active
+  Current: Feature: implement "Go to heading" (0h 8m)
+
+  [s] Start Day  [c] Clock In  [o] Clock Out  [i] Interrupt  [t] Tick  [f] Fill Gap
+  [D] Delete  [e] Edit Time  [RET] Go to Heading  [n] Next Day  [p] Prev Day  [T] Go to Date
+  [r] Refresh  [q] Quit
+
+  --------------- Timeline ---------------
+
+    00:49 - 00:49   Foo
+    00:49 - 00:49   First task in the day
+    00:49 - 00:50   Sleeping
+    00:50 - 02:20   [Gap]
+    02:20 - 17:03   New task after long pause
+    17:03 -  now    Feature: implement "Go to heading"
+#+end_quote
+
+If I press RET on Feature: implement "Go to heading", I get an error:
+
+Selected item is not a task
