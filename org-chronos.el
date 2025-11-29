@@ -276,8 +276,39 @@
 (defun chronos-goto-heading ()
   "Go to the Org heading for the selected interval."
   (interactive)
-  ;; Placeholder - would need org-id integration
-  (message "Go to heading not yet implemented"))
+  (chronos--ensure-initialized)
+  (let* ((app-state (eli-container-resolve chronos--container 'chronos-app-state))
+         (vm (chronos-app-state/get-view-model app-state))
+         (intervals (chronos-view-model-intervals vm))
+         (gaps (chronos-view-model-gaps vm))
+         (active (chronos-view-model-active vm))
+         (timeline (sort (append intervals gaps (when active (list active)))
+                         (lambda (a b)
+                           (< (chronos-interval-start a)
+                              (chronos-interval-start b)))))
+         (selected-row (chronos-view-model-selected-row vm))
+         (selected-interval (nth selected-row timeline)))
+    
+    (if (and selected-interval (eq (chronos-interval-type selected-interval) 'task))
+        (let* ((event-id (chronos-interval-event-id selected-interval))
+               (log (eli-container-resolve chronos--container 'chronos-event-log))
+               (events (chronos-event-log/get-events log))
+               (event (cl-find-if (lambda (e) (equal (chronos-event-id e) event-id)) events))
+               (payload (and event (chronos-event-payload event)))
+               (task-id (and payload (plist-get payload :task-id))))
+          
+          (if task-id
+              (let* ((linker (eli-container-resolve chronos--container 'chronos-task-linker))
+                     (marker (chronos-task-linker/get-task-location linker task-id)))
+                (if marker
+                    (progn
+                      (switch-to-buffer (marker-buffer marker))
+                      (goto-char (marker-position marker))
+                      (org-reveal)
+                      (org-show-entry))
+                  (message "Task location not found for ID: %s" task-id)))
+            (message "No task ID associated with this interval.")))
+      (message "Selected item is not a task."))))
 
 (provide 'org-chronos)
 ;;; org-chronos.el ends here

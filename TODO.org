@@ -1,7 +1,7 @@
 #+title: To be implemented
 
 
-* TODO Feature: implement "Go to heading"
+* DONE Feature: implement "Go to heading"
 :PROPERTIES:
 :CHRONOS_ID: e45a2072-1869-4862-bf9c-4ce62c23fb2f
 :END:
