@@ -11,6 +11,40 @@
 
 ;;; Code:
 
+(require 'org-chronos-interfaces)
+
+;;; ============================================================================
+;;; Package Configuration
+;;; ============================================================================
+
+(defgroup org-chronos nil
+  "Event-sourced time tracking for Org-mode."
+  :group 'org
+  :prefix "chronos-")
+
+(defcustom chronos-log-directory (expand-file-name "chronos-logs" user-emacs-directory)
+  "Directory for storing chronos event logs."
+  :type 'directory
+  :group 'org-chronos)
+
+(defconst chronos-event-priorities
+  '(:day-start 0 :stop 10 :interruption 20 :ctx-switch 30 :tick 40)
+  "Event type priorities for sorting.")
+
+;;; ============================================================================
+;;; Global Variables
+;;; ============================================================================
+
+(defvar chronos--container nil
+  "The global IoC container for chronos.")
+
+(defvar-local chronos--app-state nil
+  "Buffer-local application state reference.")
+
+;;; ============================================================================
+;;; Dependencies
+;;; ============================================================================
+
 (require 'org-chronos-ui)
 
 ;;; ============================================================================

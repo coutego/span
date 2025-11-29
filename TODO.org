@@ -1,6 +1,6 @@
 #+title: To be implemented
 
-* TODO Refactor: move package functionality to org-chronos.el
+* DONE Refactor: move package functionality to org-chronos.el
 There is code hanging around that should be in org-chronos.
 For example:
 

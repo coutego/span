@@ -14,20 +14,6 @@
 ;;; Data Structures
 ;;; ============================================================================
 
-(defgroup org-chronos nil
-  "Event-sourced time tracking for Org-mode."
-  :group 'org
-  :prefix "chronos-")
-
-(defcustom chronos-log-directory (expand-file-name "chronos-logs" user-emacs-directory)
-  "Directory for storing chronos event logs."
-  :type 'directory
-  :group 'org-chronos)
-
-(defconst chronos-event-priorities
-  '(:day-start 0 :stop 10 :interruption 20 :ctx-switch 30 :tick 40)
-  "Event type priorities for sorting.")
-
 (cl-defstruct (chronos-event (:constructor chronos-event-create))
   "An event in the chronos log."
   (id (org-id-uuid))
@@ -42,16 +28,6 @@
 (cl-defstruct (chronos-view-model (:constructor chronos-view-model-create))
   "The complete view model for rendering."
   date state intervals active gaps selected-row available-actions)
-
-;;; ============================================================================
-;;; Global Variables
-;;; ============================================================================
-
-(defvar chronos--container nil
-  "The global IoC container for chronos.")
-
-(defvar-local chronos--app-state nil
-  "Buffer-local application state reference.")
 
 ;;; ============================================================================
 ;;; Interface Definitions
