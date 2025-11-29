@@ -88,8 +88,13 @@
 
 (defun chronos--ensure-initialized ()
   "Ensure chronos is initialized."
-  (unless chronos--container
-    (chronos-setup-container))
+  (if (not chronos--container)
+      (chronos-setup-container)
+    ;; Check if container is stale (missing new bindings)
+    (condition-case nil
+        (eli-container-resolve chronos--container 'chronos-task-linker)
+      (error (chronos-setup-container))))
+  
   (unless (chronos-app-state/get-date
            (eli-container-resolve chronos--container 'chronos-app-state))
     (chronos-app-state/goto-date
