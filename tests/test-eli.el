@@ -49,6 +49,29 @@
            (t-repo/save repo key val)
            (cl-incf (oref self counter))))
 
+;; 4. Rust-style implementation fixtures
+(defclass t-existing-class ()
+  ((val :initarg :val)))
+
+(eli-definterface t-reader
+  (read ()))
+
+(eli-implement t-reader for t-existing-class
+  (read () (oref self val)))
+
+;; 5. Multiple interfaces fixtures
+(eli-definterface t-iface-a (method-a ()))
+(eli-definterface t-iface-b (method-b ()))
+
+(eli-defimplementation (t-iface-a t-iface-b) t-multi-impl
+  (method-a () "A")
+  (method-b () "B"))
+
+;; 6. Mocking fixtures
+(eli-defimplementation t-logger t-mock-logger
+  :slots ((calls :initform 0))
+  (log (msg) (cl-incf (oref self calls))))
+
 ;;; ============================================================================
 ;;; Tests
 ;;; ============================================================================
@@ -92,28 +115,12 @@
 
 (ert-deftest test-eli-rust-style ()
   "Test implementing interface for existing class."
-  (defclass t-existing-class ()
-    ((val :initarg :val)))
-  
-  (eli-definterface t-reader
-    (read ()))
-    
-  (eli-implement t-reader for t-existing-class
-    (read () (oref self val)))
-    
   (let ((obj (make-instance 't-existing-class :val 99)))
     (should (eli-implements-p obj 't-reader))
     (should (= (t-reader/read obj) 99))))
 
 (ert-deftest test-eli-multiple-interfaces ()
   "Test one class implementing multiple interfaces."
-  (eli-definterface t-iface-a (method-a ()))
-  (eli-definterface t-iface-b (method-b ()))
-  
-  (eli-defimplementation (t-iface-a t-iface-b) t-multi-impl
-    (method-a () "A")
-    (method-b () "B"))
-    
   (let ((obj (make-t-multi-impl)))
     (should (eli-implements-p obj 't-iface-a))
     (should (eli-implements-p obj 't-iface-b))
@@ -139,10 +146,6 @@
 
 (ert-deftest test-eli-mocking ()
   "Test substituting a mock implementation."
-  (eli-defimplementation t-logger t-mock-logger
-    :slots ((calls :initform 0))
-    (log (msg) (cl-incf (oref self calls))))
-    
   (let ((container (eli-make-container)))
     (eli-container-bind-instance container 't-logger (make-t-mock-logger))
     
