@@ -17,6 +17,7 @@
 (require 'org-chronos-event-log)
 (require 'org-chronos-app-state)
 (require 'org-chronos-renderer)
+(require 'org-chronos-task-linker)
 
 ;;; ============================================================================
 ;;; Package Configuration
@@ -78,6 +79,10 @@
                           (let ((app-state (eli-container-resolve container 'chronos-app-state)))
                             (make-chronos-buffer-renderer :app-state app-state)))
                         t)
+    ;; Bind task linker (singleton)
+    (eli-configure-container container
+                             (chronos-task-linker :to chronos-org-task-linker :singleton t))
+    
     (setq chronos--container container)
     container))
 

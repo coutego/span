@@ -1,7 +1,6 @@
 #+title: To be implemented
 
-
-* TODO Feature: implement linking org-mode headlines to tasks
+* DONE Feature: implement linking org-mode headlines to tasks
 Use CHRONOS_ID properties to keep links to tasks (headlines)
 in chronos.
 

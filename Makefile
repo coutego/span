@@ -16,4 +16,5 @@ test:
 		-l tests/test-eli.el \
 		-l tests/test-org-chronos-persistence.el \
 		-l tests/test-org-chronos-event-log.el \
+		-l tests/test-org-chronos-task-linker.el \
 		-f ert-run-tests-batch-and-exit

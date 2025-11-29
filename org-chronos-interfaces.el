@@ -77,5 +77,11 @@
                   (get-buffer () "Get the renderer's buffer.")
                   (refresh () "Refresh the current display."))
 
+;; Task Linker Interface - manages links to Org headlines
+(eli-definterface chronos-task-linker
+                  "Interface for linking chronos events to Org tasks."
+                  (get-task-id (pom) "Get or create CHRONOS_ID for task at POM (point or marker).")
+                  (get-task-location (id) "Find location (marker) of task with ID."))
+
 (provide 'org-chronos-interfaces)
 ;;; org-chronos-interfaces.el ends here
