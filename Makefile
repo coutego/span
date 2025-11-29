@@ -13,9 +13,5 @@ test:
 				  (dolist (pkg '(f ts dash)) \
 				    (unless (package-installed-p pkg) (package-install pkg))))" \
 		--eval "(add-to-list 'load-path \".\")" \
-		-l tests/test-persistence.el \
-		-l tests/test-domain.el \
-		-l tests/test-state.el \
-		-l tests/test-ui.el \
-		-l tests/test-controller.el \
+		-l tests/test-eli.el \
 		-f ert-run-tests-batch-and-exit
