@@ -289,7 +289,7 @@
          (selected-row (chronos-view-model-selected-row vm))
          (selected-interval (nth selected-row timeline)))
     
-    (if (and selected-interval (eq (chronos-interval-type selected-interval) 'task))
+    (if (and selected-interval (memq (chronos-interval-type selected-interval) '(task active)))
         (let* ((event-id (chronos-interval-event-id selected-interval))
                (log (eli-container-resolve chronos--container 'chronos-event-log))
                (events (chronos-event-log/get-events log))

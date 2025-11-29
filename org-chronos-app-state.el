@@ -55,7 +55,7 @@
                                               (let* ((day-state (chronos-event-log/get-day-state (oref self event-log)))
                                                      (selected (chronos--get-selected-interval self))
                                                      (is-gap (and selected (eq (chronos-interval-type selected) 'gap)))
-                                                     (is-task (and selected (eq (chronos-interval-type selected) 'task))))
+                                                     (is-task (and selected (memq (chronos-interval-type selected) '(task active)))))
                                                 (list
                                                  (list :key "s" :action 'start-day :label "Start Day"
                                                        :enabled (eq day-state 'pre-start))
