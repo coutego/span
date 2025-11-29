@@ -1,12 +1,2 @@
 #+title: To be implemented
 
-* DONE Feature: implement linking org-mode headlines to tasks
-Use CHRONOS_ID properties to keep links to tasks (headlines)
-in chronos.
-
-A previous implementation of the feature used the code in temp.el.
-Now that functionality should live behing an eli.el interface and
-be used through the IoC, without having to depend on the implementation.
-
-This task includes the design and creation of the interface to be used,  and
-writing tests for that implementation.
