@@ -16,7 +16,6 @@
                   "org-chronos-event-log.el"
                   "org-chronos-app-state.el"
                   "org-chronos-renderer.el"
-                  "org-chronos-ui.el"
                   "org-chronos.el"))
     (let ((path (expand-file-name file dir)))
       (when (file-exists-p path)
