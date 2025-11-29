@@ -1,7 +1,7 @@
 ;;; eli.el --- Emacs Lisp Interfaces -*- lexical-binding: t; -*-
 
 ;; Author: Your Name
-;; Version: 1.0.0
+;; Version: 1.0.1
 ;; Package-Requires: ((emacs "27.1"))
 
 ;;; Commentary:
@@ -12,6 +12,87 @@
 
 (require 'cl-lib)
 (require 'eieio)
+
+;;; ============================================================================
+;;; Indentation Logic
+;;; ============================================================================
+
+(defun eli--inside-eli-macro-p ()
+  "Return position of eli macro if point is inside one, nil otherwise.
+Searches up through all containing sexps."
+  (save-excursion
+    (let ((ppss (syntax-ppss)))
+      (catch 'found
+        (while (nth 1 ppss)
+          (goto-char (nth 1 ppss))
+          (when (looking-at
+                 (rx "(" (* space)
+                     (or "eli-definterface"
+                         "eli-defimplementation"
+                         "eli-implement"
+                         "eli-defcomponent")
+                     word-end))
+            (throw 'found (point)))
+          (setq ppss (syntax-ppss)))
+        nil))))
+
+(defun eli--method-form-p ()
+  "Return t if point is at a list that looks like a method definition.
+A method form is (symbol (arglist) body...) where symbol is not a keyword."
+  (looking-at (rx "(" (* space)
+                  (not (any ":("))
+                  (+ (or word (syntax symbol)))
+                  (* space)
+                  "(")))
+
+(defun eli--indent-as-defun (indent-point containing-sexp)
+  "Compute defun-style indentation for method bodies.
+Returns column for body, or nil if INDENT-POINT is not in the body."
+  (save-excursion
+    (goto-char containing-sexp)
+    (let ((form-col (current-column)))
+      (condition-case nil
+          (progn
+            (down-list)
+            (forward-sexp)              ; skip method name
+            (skip-chars-forward " \t\n")
+            (forward-sexp)              ; skip arglist
+            (if (>= indent-point (point))
+                (+ form-col lisp-body-indent)
+              nil))
+        (error nil)))))
+
+(defun eli--compute-eli-indent (indent-point state eli-macro-pos)
+  "Compute indentation for INDENT-POINT inside an eli macro.
+STATE is the parse state, ELI-MACRO-POS is position of the eli macro."
+  (let ((innermost-sexp (nth 1 state)))
+    (cond
+     ;; Directly inside the eli macro form
+     ((= innermost-sexp eli-macro-pos)
+      (save-excursion
+        (goto-char eli-macro-pos)
+        (+ (current-column) lisp-body-indent)))
+
+     ;; Inside a method-like form: (name (args) body...)
+     ((save-excursion
+        (goto-char innermost-sexp)
+        (eli--method-form-p))
+      (eli--indent-as-defun indent-point innermost-sexp))
+
+     ;; Other nested forms - return nil for default handling
+     (t nil))))
+
+(defun eli--lisp-indent-advice (orig-fun indent-point state)
+  "Advice for `lisp-indent-function' to handle eli macro indentation."
+  (let ((eli-pos (save-excursion
+                   (goto-char indent-point)
+                   (eli--inside-eli-macro-p))))
+    (if eli-pos
+        (or (eli--compute-eli-indent indent-point state eli-pos)
+            (funcall orig-fun indent-point state))
+      (funcall orig-fun indent-point state))))
+
+(advice-add 'lisp-indent-function :around #'eli--lisp-indent-advice)
 
 ;;; ============================================================================
 ;;; Interface Registry
@@ -58,7 +139,8 @@ Example:
     (find-by-id (id) \"Find an entity by its ID.\")
     (save (entity) \"Save an entity.\")
     (delete (id) \"Delete an entity by ID.\"))"
-  (declare (indent defun) (doc-string 2))
+  (declare (doc-string 2)
+           (debug (sexp &optional stringp &rest form)))
   ;; Handle case where docstring is actually a method or keyword
   (when (or (keywordp docstring) (listp docstring))
     (push docstring body)
@@ -177,7 +259,8 @@ Example:
 
     (delete (id)
       (remhash id (memory-repository-items self))))"
-  (declare (indent defun) (doc-string 3))
+  (declare (doc-string 3)
+           (debug (sexp sexp &optional stringp &rest form)))
   ;; Handle missing docstring
   (when (or (keywordp docstring) (listp docstring))
     (push docstring body)
@@ -313,7 +396,7 @@ Example:
     (open ()
       (setf (oref self mode) \\='write)
       (message \"Opened %s for writing\" (oref self path))))"
-  (declare (indent 3))
+  (declare (debug (sexp symbolp sexp &rest form)))
   (unless (eq for 'for)
     (error "Expected `for' keyword: (eli-implement INTERFACE for CLASS ...)"))
   (let ((iface-spec (gethash interface eli--interfaces)))
@@ -464,7 +547,8 @@ Example:
     (get-user (id)
       (logger/info logger \"Fetching user %s\" id)
       (user-repository/find-by-id repo id)))"
-  (declare (indent defun) (doc-string 3))
+  (declare (doc-string 3)
+           (debug (sexp sexp &optional stringp &rest form)))
   (when (or (keywordp docstring) (listp docstring))
     (push docstring body)
     (setq docstring nil))
