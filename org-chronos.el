@@ -14,6 +14,7 @@
 (require 'eli)
 (require 'eieio)
 (require 'cl-lib)
+(require 'org-id)
 
 ;;; ============================================================================
 ;;; Data Structures
@@ -115,7 +116,7 @@
                                             (while (not (eobp))
                                               (condition-case nil
                                                   (let ((sexp (read (current-buffer))))
-                                                    (when sexp
+                                                    (when (and sexp (listp sexp))
                                                       (push (chronos--sexp-to-event sexp) events)))
                                                 (error (forward-line 1))))
                                             (nreverse events))))))
