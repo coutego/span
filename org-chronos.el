@@ -288,14 +288,16 @@
 (defun chronos--compute-gaps (events date)
   "Compute gap intervals from EVENTS for DATE."
   (let* ((intervals (chronos--compute-intervals events))
+         (active (chronos--compute-active events))
+         (all-intervals (append intervals (when active (list active))))
          (decoded (decode-time date))
          (day-start (float-time (encode-time 0 0 0
                                              (nth 3 decoded)   ; day
                                              (nth 4 decoded)   ; month
                                              (nth 5 decoded)))) ; year
          gaps)
-    (when intervals
-      (let ((first-interval (car intervals)))
+    (when all-intervals
+      (let ((first-interval (car all-intervals)))
         (when (> (chronos-interval-start first-interval) day-start)
           (push (chronos-interval-create
                  :id (org-id-uuid)
@@ -305,7 +307,7 @@
                  :type 'gap)
                 gaps)))
       (let ((prev nil))
-        (dolist (interval intervals)
+        (dolist (interval all-intervals)
           (when (and prev
                      (> (chronos-interval-start interval)
                         (chronos-interval-end prev)))
