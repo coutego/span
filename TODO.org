@@ -1,7 +1,7 @@
 #+title: To be implemented
 
 
-* TODO Feature: create a command to clock in and link heading
+* DONE Feature: create a command to clock in and link heading
 When I am in a heading anywhere in an org-mode task, allow to
 run a command that creates a CHRONOS_ID to the heading, put it
 in the linker system and clock-in in chronos, linking the task

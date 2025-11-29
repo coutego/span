@@ -171,6 +171,18 @@
          (buf (chronos-renderer/render renderer vm)))
     (switch-to-buffer buf)))
 
+(defun chronos-clock-in-current-heading ()
+  "Clock in to the current Org heading."
+  (interactive)
+  (unless (derived-mode-p 'org-mode)
+    (user-error "Not in an Org buffer"))
+  (chronos--ensure-initialized)
+  (let* ((linker (eli-container-resolve chronos--container 'chronos-task-linker))
+         (id (chronos-task-linker/get-task-id linker (point)))
+         (title (org-get-heading t t t t)))
+    (chronos--execute-action 'clock-in title id)
+    (message "Clocked in: %s" title)))
+
 (defun chronos-next-row ()
   "Move to the next row in the timeline."
   (interactive)

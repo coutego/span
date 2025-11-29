@@ -90,11 +90,13 @@
                                                log (chronos-event-create :type :day-start :time time))))
                                            ('clock-in
                                             (let ((title (or (car args)
-                                                             (read-string "Task: "))))
+                                                             (read-string "Task: ")))
+                                                  (task-id (cadr args)))
                                               (chronos-event-log/add-event
                                                log (chronos-event-create
                                                     :type :ctx-switch
-                                                    :payload (list :title title)))))
+                                                    :payload (append (list :title title)
+                                                                     (when task-id (list :task-id task-id)))))))
                                            ('clock-out
                                             (chronos-event-log/add-event
                                              log (chronos-event-create :type :stop)))
