@@ -287,3 +287,5 @@ when I'm on the task:
 If I press RET on Feature: implement "Go to heading", I get an error:
 
 Selected item is not a task
+
+* DONE Refactor: indent all files properly

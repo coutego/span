@@ -12,53 +12,53 @@
 ;;; ============================================================================
 
 (eli-defimplementation chronos-event-log chronos-default-event-log
-                       "Default event log implementation with optional storage backend."
-                       :slots ((current-date :initform nil)
-                               (events :initform nil)
-                               (storage :initarg :storage :initform nil))
+  "Default event log implementation with optional storage backend."
+  :slots ((current-date :initform nil)
+          (events :initform nil)
+          (storage :initarg :storage :initform nil))
 
-                       (get-date ()
-                                 (oref self current-date))
+  (get-date ()
+    (oref self current-date))
 
-                       (set-date (date)
-                                 (oset self current-date date)
-                                 (oset self events
-                                       (if (oref self storage)
-                                           (or (chronos-storage/read-events (oref self storage) date) nil)
-                                         nil)))
+  (set-date (date)
+    (oset self current-date date)
+    (oset self events
+          (if (oref self storage)
+            (or (chronos-storage/read-events (oref self storage) date) nil)
+            nil)))
 
-                       (get-events ()
-                                   (chronos--sort-events (oref self events)))
+  (get-events ()
+    (chronos--sort-events (oref self events)))
 
-                       (add-event (event)
-                                  (push event (oref self events))
-                                  (chronos--persist-if-storage self))
+  (add-event (event)
+    (push event (oref self events))
+    (chronos--persist-if-storage self))
 
-                       (remove-event (event-id)
-                                     (oset self events
-                                           (cl-remove-if (lambda (e) (equal (chronos-event-id e) event-id))
-                                                         (oref self events)))
-                                     (chronos--persist-if-storage self))
+  (remove-event (event-id)
+    (oset self events
+          (cl-remove-if (lambda (e) (equal (chronos-event-id e) event-id))
+            (oref self events)))
+    (chronos--persist-if-storage self))
 
-                       (update-event (event-id new-event)
-                                     (oset self events
-                                           (mapcar (lambda (e)
-                                                     (if (equal (chronos-event-id e) event-id) new-event e))
-                                                   (oref self events)))
-                                     (chronos--persist-if-storage self))
+  (update-event (event-id new-event)
+    (oset self events
+          (mapcar (lambda (e)
+                    (if (equal (chronos-event-id e) event-id) new-event e))
+            (oref self events)))
+    (chronos--persist-if-storage self))
 
-                       (get-intervals ()
-                                      (chronos--compute-intervals (chronos-event-log/get-events self)))
+  (get-intervals ()
+    (chronos--compute-intervals (chronos-event-log/get-events self)))
 
-                       (get-active ()
-                                   (chronos--compute-active (chronos-event-log/get-events self)))
+  (get-active ()
+    (chronos--compute-active (chronos-event-log/get-events self)))
 
-                       (get-gaps ()
-                                 (chronos--compute-gaps (chronos-event-log/get-events self)
-                                                        (oref self current-date)))
+  (get-gaps ()
+    (chronos--compute-gaps (chronos-event-log/get-events self)
+      (oref self current-date)))
 
-                       (get-day-state ()
-                                      (chronos--compute-day-state (chronos-event-log/get-events self))))
+  (get-day-state ()
+    (chronos--compute-day-state (chronos-event-log/get-events self))))
 
 (defun chronos--persist-if-storage (log)
   "Persist LOG events if storage backend exists."

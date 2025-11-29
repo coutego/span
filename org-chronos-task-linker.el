@@ -31,7 +31,7 @@
     ;; Check cache first
     (let ((cached (gethash id (oref self cache))))
       (if (and cached (marker-buffer cached))
-          cached
+        cached
         ;; Fallback: scan agenda files
         (let ((m (chronos--find-id-in-agenda-files id)))
           (when m

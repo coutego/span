@@ -56,32 +56,32 @@
   "Face for finished state.")
 
 (eli-defimplementation chronos-renderer chronos-buffer-renderer
-                       "Buffer-based renderer implementation."
-                       :slots ((buffer-name :initarg :buffer-name :initform "*Org-Chronos*")
-                               (app-state :initarg :app-state))
+  "Buffer-based renderer implementation."
+  :slots ((buffer-name :initarg :buffer-name :initform "*Org-Chronos*")
+          (app-state :initarg :app-state))
 
-                       (render (view-model)
-                               (let ((buf (get-buffer-create (oref self buffer-name)))
-                                     (inhibit-read-only t))
-                                 (with-current-buffer buf
-                                   (erase-buffer)
-                                   (chronos--render-header view-model)
-                                   (chronos--render-status view-model)
-                                   (chronos--render-actions view-model)
-                                   (chronos--render-timeline view-model)
-                                   (goto-char (point-min))
-                                   (chronos-mode)
-                                   (setq-local chronos--app-state (oref self app-state)))
-                                 buf))
+  (render (view-model)
+    (let ((buf (get-buffer-create (oref self buffer-name)))
+          (inhibit-read-only t))
+      (with-current-buffer buf
+        (erase-buffer)
+        (chronos--render-header view-model)
+        (chronos--render-status view-model)
+        (chronos--render-actions view-model)
+        (chronos--render-timeline view-model)
+        (goto-char (point-min))
+        (chronos-mode)
+        (setq-local chronos--app-state (oref self app-state)))
+      buf))
 
-                       (get-buffer ()
-                                   (get-buffer (oref self buffer-name)))
+  (get-buffer ()
+    (get-buffer (oref self buffer-name)))
 
-                       (refresh ()
-                                (when (oref self app-state)
-                                  (chronos-renderer/render
-                                   self
-                                   (chronos-app-state/get-view-model (oref self app-state))))))
+  (refresh ()
+    (when (oref self app-state)
+      (chronos-renderer/render
+       self
+       (chronos-app-state/get-view-model (oref self app-state))))))
 
 (defun chronos--render-header (vm)
   "Render header section from view model VM."
