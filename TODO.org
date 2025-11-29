@@ -12,7 +12,7 @@ the actions always visible, but to activate and deactivate them
 as needed. When deactivated, it should be clearly visible (for
 example, by making the font gray / shaded)
 
-* TODO Feature: break implementation in separate files
+* DONE Feature: break implementation in separate files
 For development convenience, clarity and to keep files short
 break down the implementation of org-chronos in different files.
 On possible idea:
