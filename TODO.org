@@ -1,24 +1,42 @@
 #+title: To be implemented
 
-* DONE Refactor: move package functionality to org-chronos.el
-There is code hanging around that should be in org-chronos.
-For example:
+* TODO Refactor: move all setup code to org-chronos.el
+Currently, org-chronos-ui.el has setup code that doesn't
+belong there (in my opinion). For example:
 
-(defgroup org-chronos nil
-  "Event-sourced time tracking for Org-mode."
-  :group 'org
-  :prefix "chronos-")
+#+begin_src
 
-(defcustom chronos-log-directory (expand-file-name "chronos-logs" user-emacs-directory)
-  "Directory for storing chronos event logs."
-  :type 'directory
-  :group 'org-chronos)
-
-(defconst chronos-event-priorities
-  '(:day-start 0 :stop 10 :interruption 20 :ctx-switch 30 :tick 40)
-  "Event type priorities for sorting.")
+;;; ============================================================================
+;;; IoC Container Setup
+;;; ============================================================================
 
 #+end_src
+
+I don't think the IoC setup belongs here, does it? The UI should be able to be used even without container, as long
+as the right objects are passed to the right function (rather than looked up)
+
+#+begin_src
+
+;;;###autoload
+(defun chronos ()
+  "Open the Org-Chronos time tracker."
+  (interactive)
+  (chronos--ensure-initialized)
+  (let* ((app-state (eli-container-resolve chronos--container 'chronos-app-state))
+         (renderer (eli-container-resolve chronos--container 'chronos-renderer))
+         (vm (chronos-app-state/get-view-model app-state))
+         (buf (chronos-renderer/render renderer vm)))
+    (switch-to-buffer buf)))
+#+end_src
+
+All functions exposed to the general environment, especially this one, but any other that is interactive would
+seem to belong in org-chronos.el.
+
+On the other hand, I'm not sure there is any need for the "test" code in org-chronos.el. Check whether is needed at
+all, and drop it if needed.
+
+Perhaps there is no actual need for the org-chronos-ui.el file and everything should be in org-chronos.el.
+
 * TODO Feature: ask for time when starting the day
 When executing the command to start the day, ask for the time that it should be started at, defaulting to the current time and allowing both an absolute time (HH:MM)
 or a relative time (-20) (indicating 20 minutes ago)
@@ -31,27 +49,3 @@ the actions always visible, but to activate and deactivate them
 as needed. When deactivated, it should be clearly visible (for
 example, by making the font gray / shaded)
 
-* DONE Feature: break implementation in separate files
-For development convenience, clarity and to keep files short
-break down the implementation of org-chronos in different files.
-On possible idea:
-- org-chronos-interfaces.el
-  All the interfaces (and perhaps the data structures the interfaces use)
-- org-chronos-persistence.el Code related to persistence (default implementation of the
-  persistence interface + any other alternative implementation that
-  might already exist, auxiliary functions, ...)
-- org-chronos-event-log.el
-  Idem, for the corresponding interface
-- org-chronos-app-state.el
-  Idem, for the corresponding interface
-- org-chronos-renderer.el
-  Idem, for the corresponding interface
-- org-chronos-ui.el
-  UI of the application, event handlers, evil-mode, etc.
-- org-chronos.el
-  Package mode like defgroup declarations, set-up of the IoC
-  container, setting any global variable, etc.
-
-Remember to updade the dev-load.el file and to create different test files for different files (for those that need to have tests,
-which excludes the org-chronos-interfaces.el and org-chronos.el
-files, at least)
