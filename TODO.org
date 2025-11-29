@@ -1,18 +1,38 @@
 #+title: To be implemented
 
-* DONE Bug: non attributed period not deleted
-When pressing 'f' to attribute a task to a '<non attributed>' period,
-the new one is added, but the <non attributed> is kept, with zero minutes
+* TODO Feature: ask for time when starting the day
+When executing the command to start the day, ask for the time that it should be started at, defaulting to the current time and allowing both an absolute time (HH:MM)
+or a relative time (-20) (indicating 20 minutes ago)
 
-* TODO Bug: command 'f' not shown in the menu when selecting a non attributed task
-When the cursor is over a line with a '<non attributed>' period, no 'f'
-is shown in the menu, even though 'f' works as a keystroke
+* TODO Feature: keep all actions, even when deactivated
+Since actions change dynamically, things move vertically
+when the buffer window is narrow (because of line breaks).
+In order to avoid that, one possibility is to just keep all
+the actions always visible, but to activate and deactivate them
+as needed. When deactivated, it should be clearly visible (for
+example, by making the font gray / shaded)
 
-* DONE Bug: no commands available in status on new day
-If I run status on the current empty day I get this:
+* TODO Feature: break implementation in separate files
+For development convenience, clarity and to keep files short
+break down the implementation of org-chronos in different files.
+On possible idea:
+- org-chronos-interfaces.el
+  All the interfaces (and perhaps the data structures the interfaces use)
+- org-chronos-persistence.el Code related to persistence (default implementation of the
+  persistence interface + any other alternative implementation that
+  might already exist, auxiliary functions, ...)
+- org-chronos-event-log.el
+  Idem, for the corresponding interface
+- org-chronos-app-state.el
+  Idem, for the corresponding interface
+- org-chronos-renderer.el
+  Idem, for the corresponding interface
+- org-chronos-ui.el
+  UI of the application, event handlers, evil-mode, etc.
+- org-chronos.el
+  Package mode like defgroup declarations, set-up of the IoC
+  container, setting any global variable, etc.
 
-
-ORG-CHRONOS :: Friday, November 28, 2025
-============================================================
-
-[ TIMELINE ]
+Remember to updade the dev-load.el file and to create different test files for different files (for those that need to have tests,
+which excludes the org-chronos-interfaces.el and org-chronos.el
+files, at least)

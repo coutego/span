@@ -413,8 +413,9 @@
                                        (let ((log (oref self event-log)))
                                          (pcase action
                                            ('start-day
-                                            (chronos-event-log/add-event
-                                             log (chronos-event-create :type :day-start)))
+                                            (let ((time (if args (float-time (car args)) (float-time))))
+                                              (chronos-event-log/add-event
+                                               log (chronos-event-create :type :day-start :time time))))
                                            ('clock-in
                                             (let ((title (or (car args)
                                                              (read-string "Task: "))))
@@ -837,7 +838,8 @@
 (defun chronos-start-day ()
   "Start the day."
   (interactive)
-  (chronos--execute-action 'start-day))
+  (let ((time (org-read-date t t nil "Start time: " nil (format-time-string "%H:%M"))))
+    (chronos--execute-action 'start-day time)))
 
 (defun chronos-clock-in ()
   "Clock into a task."
