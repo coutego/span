@@ -52,30 +52,34 @@
                                      (oset self selected-row (max 0 (min max-row index)))))
 
                        (get-available-actions ()
-                                              (let ((day-state (chronos-event-log/get-day-state (oref self event-log)))
-                                                    (selected (chronos--get-selected-interval self)))
-                                                (append
-                                                 (pcase day-state
-                                                   ('pre-start '((:key "s" :action start-day :label "Start Day")
-                                                                 (:key "c" :action clock-in :label "Clock In")))
-                                                   ('active '((:key "c" :action clock-in :label "Clock In")
-                                                              (:key "o" :action clock-out :label "Clock Out")
-                                                              (:key "i" :action interrupt :label "Interrupt")
-                                                              (:key "t" :action tick :label "Tick")))
-                                                   ('interrupted '((:key "c" :action clock-in :label "Resume")
-                                                                   (:key "o" :action clock-out :label "Finish Day")))
-                                                   ('finished '((:key "c" :action clock-in :label "Resume"))))
-                                                 '((:key "n" :action next-date :label "Next Day")
-                                                   (:key "p" :action prev-date :label "Prev Day")
-                                                   (:key "T" :action goto-date :label "Go to Date")
-                                                   (:key "r" :action refresh :label "Refresh")
-                                                   (:key "q" :action quit :label "Quit"))
-                                                 (when (and selected (eq (chronos-interval-type selected) 'gap))
-                                                   '((:key "f" :action fill-gap :label "Fill Gap")))
-                                                 (when (and selected (eq (chronos-interval-type selected) 'task))
-                                                   '((:key "D" :action delete-interval :label "Delete")
-                                                     (:key "e" :action edit-time :label "Edit Time")
-                                                     (:key "RET" :action goto-heading :label "Go to Heading"))))))
+                                              (let* ((day-state (chronos-event-log/get-day-state (oref self event-log)))
+                                                     (selected (chronos--get-selected-interval self))
+                                                     (is-gap (and selected (eq (chronos-interval-type selected) 'gap)))
+                                                     (is-task (and selected (eq (chronos-interval-type selected) 'task))))
+                                                (list
+                                                 (list :key "s" :action 'start-day :label "Start Day"
+                                                       :enabled (eq day-state 'pre-start))
+                                                 (list :key "c" :action 'clock-in :label (if (memq day-state '(interrupted finished)) "Resume" "Clock In")
+                                                       :enabled t)
+                                                 (list :key "o" :action 'clock-out :label (if (eq day-state 'interrupted) "Finish Day" "Clock Out")
+                                                       :enabled (memq day-state '(active interrupted)))
+                                                 (list :key "i" :action 'interrupt :label "Interrupt"
+                                                       :enabled (eq day-state 'active))
+                                                 (list :key "t" :action 'tick :label "Tick"
+                                                       :enabled (eq day-state 'active))
+                                                 (list :key "f" :action 'fill-gap :label "Fill Gap"
+                                                       :enabled is-gap)
+                                                 (list :key "D" :action 'delete-interval :label "Delete"
+                                                       :enabled is-task)
+                                                 (list :key "e" :action 'edit-time :label "Edit Time"
+                                                       :enabled is-task)
+                                                 (list :key "RET" :action 'goto-heading :label "Go to Heading"
+                                                       :enabled is-task)
+                                                 (list :key "n" :action 'next-date :label "Next Day" :enabled t)
+                                                 (list :key "p" :action 'prev-date :label "Prev Day" :enabled t)
+                                                 (list :key "T" :action 'goto-date :label "Go to Date" :enabled t)
+                                                 (list :key "r" :action 'refresh :label "Refresh" :enabled t)
+                                                 (list :key "q" :action 'quit :label "Quit" :enabled t))))
 
                        (execute-action (action &rest args)
                                        (let ((log (oref self event-log)))

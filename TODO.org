@@ -1,6 +1,47 @@
 #+title: To be implemented
 
-* TODO Feature: keep all actions, even when deactivated
+* DONE Refactor: move all setup code to org-chronos.el
+Currently, org-chronos-ui.el has setup code that doesn't
+belong there (in my opinion). For example:
+
+#+begin_src
+
+;;; ============================================================================
+;;; IoC Container Setup
+;;; ============================================================================
+
+#+end_src
+
+I don't think the IoC setup belongs here, does it? The UI should be able to be used even without container, as long
+as the right objects are passed to the right function (rather than looked up)
+
+#+begin_src
+
+;;;###autoload
+(defun chronos ()
+  "Open the Org-Chronos time tracker."
+  (interactive)
+  (chronos--ensure-initialized)
+  (let* ((app-state (eli-container-resolve chronos--container 'chronos-app-state))
+         (renderer (eli-container-resolve chronos--container 'chronos-renderer))
+         (vm (chronos-app-state/get-view-model app-state))
+         (buf (chronos-renderer/render renderer vm)))
+    (switch-to-buffer buf)))
+#+end_src
+
+All functions exposed to the general environment, especially this one, but any other that is interactive would
+seem to belong in org-chronos.el.
+
+On the other hand, I'm not sure there is any need for the "test" code in org-chronos.el. Check whether is needed at
+all, and drop it if needed.
+
+Perhaps there is no actual need for the org-chronos-ui.el file and everything should be in org-chronos.el.
+
+* DONE Feature: ask for time when starting the day
+When executing the command to start the day, ask for the time that it should be started at, defaulting to the current time and allowing both an absolute time (HH:MM)
+or a relative time (-20) (indicating 20 minutes ago)
+
+* DONE Feature: keep all actions, even when deactivated
 Since actions change dynamically, things move vertically
 when the buffer window is narrow (because of line breaks).
 In order to avoid that, one possibility is to just keep all

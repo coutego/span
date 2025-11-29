@@ -35,6 +35,10 @@
   '((t :inherit font-lock-constant-face :weight bold))
   "Face for action keys.")
 
+(defface chronos-action-disabled-face
+  '((t :inherit font-lock-comment-face :strike-through nil))
+  "Face for disabled actions.")
+
 (defface chronos-state-pre-start-face
   '((t :inherit font-lock-comment-face))
   "Face for pre-start state.")
@@ -126,16 +130,26 @@
          (col (length indent)))
     (insert indent)
     (dolist (action actions)
-      (let* ((key-str (format "[%s]" (plist-get action :key)))
-             (label-str (format " %s" (plist-get action :label)))
+      (let* ((enabled (plist-get action :enabled))
+             (key (plist-get action :key))
+             (label (plist-get action :label))
+             (key-str (format "[%s]" key))
+             (label-str (format " %s" label))
              (entry-len (+ (length key-str) (length label-str) 2))) ; +2 for spacing
+        
         ;; Wrap to next line if this entry would overflow
         (when (and (> col (length indent))
                    (> (+ col entry-len) max-width))
           (insert "\n" indent)
           (setq col (length indent)))
-        (insert (propertize key-str 'face 'chronos-action-key-face))
-        (insert label-str "  ")
+        
+        (if enabled
+            (progn
+              (insert (propertize key-str 'face 'chronos-action-key-face))
+              (insert label-str))
+          (insert (propertize (concat key-str label-str) 'face 'chronos-action-disabled-face)))
+        
+        (insert "  ")
         (setq col (+ col entry-len))))
     (insert "\n\n")))
 
