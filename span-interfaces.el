@@ -1,7 +1,7 @@
-;;; org-chronos-interfaces.el --- Interfaces for Org-Chronos -*- lexical-binding: t; -*-
+;;; span-interfaces.el --- Interfaces for Span -*- lexical-binding: t; -*-
 
 ;;; Commentary:
-;; Interfaces and data structures for Org-Chronos.
+;; Interfaces and data structures for Span
 
 ;;; Code:
 
@@ -14,18 +14,18 @@
 ;;; Data Structures
 ;;; ============================================================================
 
-(cl-defstruct (chronos-event (:constructor chronos-event-create))
-  "An event in the chronos log."
+(cl-defstruct (span-event (:constructor span-event-create))
+  "An event in the span log."
   (id (org-id-uuid))
   (time (float-time))
   (type :ctx-switch)
   (payload nil))
 
-(cl-defstruct (chronos-interval (:constructor chronos-interval-create))
+(cl-defstruct (span-interval (:constructor span-interval-create))
   "A computed time interval."
   id start end title event-id (type 'task))
 
-(cl-defstruct (chronos-view-model (:constructor chronos-view-model-create))
+(cl-defstruct (span-view-model (:constructor span-view-model-create))
   "The complete view model for rendering."
   date state intervals active gaps selected-row available-actions)
 
@@ -34,14 +34,14 @@
 ;;; ============================================================================
 
 ;; Storage Interface - handles persistence
-(eli-definterface chronos-storage
-  "Interface for persisting chronos events."
-  (read-events (date) "Read events for DATE (encoded time). Returns list of chronos-event.")
+(eli-definterface span-storage
+  "Interface for persisting span events."
+  (read-events (date) "Read events for DATE (encoded time). Returns list of span-event.")
   (write-events (date events) "Write EVENTS list for DATE.")
   (events-exist-p (date) "Check if events exist for DATE."))
 
 ;; Event Log Interface - manages events in memory
-(eli-definterface chronos-event-log
+(eli-definterface span-event-log
   "Interface for managing the event log."
   (get-date () "Get the current date of the log.")
   (set-date (date) "Set the log to DATE, loading events.")
@@ -55,7 +55,7 @@
   (get-day-state () "Get day state: pre-start, active, interrupted, or finished."))
 
 ;; Application State Interface - manages UI state and actions
-(eli-definterface chronos-app-state
+(eli-definterface span-app-state
   "Interface for application state management."
   (get-date () "Get current viewing date.")
   (next-date () "Navigate to next day.")
@@ -71,17 +71,17 @@
   (refresh () "Refresh the state from underlying data."))
 
 ;; Renderer Interface - renders to buffer
-(eli-definterface chronos-renderer
-  "Interface for rendering the chronos UI."
+(eli-definterface span-renderer
+  "Interface for rendering the span UI."
   (render (view-model) "Render VIEW-MODEL to the buffer.")
   (get-buffer () "Get the renderer's buffer.")
   (refresh () "Refresh the current display."))
 
 ;; Task Linker Interface - manages links to Org headlines
-(eli-definterface chronos-task-linker
-  "Interface for linking chronos events to Org tasks."
-  (get-task-id (pom) "Get or create CHRONOS_ID for task at POM (point or marker).")
+(eli-definterface span-task-linker
+  "Interface for linking span events to Org tasks."
+  (get-task-id (pom) "Get or create SPAN_ID for task at POM (point or marker).")
   (get-task-location (id) "Find location (marker) of task with ID."))
 
-(provide 'org-chronos-interfaces)
-;;; org-chronos-interfaces.el ends here
+(provide 'span-interfaces)
+;;; span-interfaces.el ends here

@@ -1,63 +1,63 @@
-;;; org-chronos-renderer.el --- Renderer for Org-Chronos -*- lexical-binding: t; -*-
+;;; span-renderer.el --- Renderer for Span -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;; Buffer-based rendering implementation.
 
 ;;; Code:
 
-(require 'org-chronos-interfaces)
+(require 'span-interfaces)
 
 ;;; ============================================================================
 ;;; Renderer Implementation
 ;;; ============================================================================
 
-(defface chronos-header-face
+(defface span-header-face
   '((t :inherit font-lock-keyword-face :height 1.3 :weight bold))
   "Face for the header.")
 
-(defface chronos-active-face
+(defface span-active-face
   '((t :inherit success :weight bold))
   "Face for active task indicator.")
 
-(defface chronos-gap-face
+(defface span-gap-face
   '((t :inherit error))
   "Face for gap intervals.")
 
-(defface chronos-task-face
+(defface span-task-face
   '((t :inherit font-lock-function-name-face :weight bold))
   "Face for task intervals.")
 
-(defface chronos-selected-face
+(defface span-selected-face
   '((t :inherit highlight :extend t))
   "Face for selected row.")
 
-(defface chronos-action-key-face
+(defface span-action-key-face
   '((t :inherit font-lock-constant-face :weight bold))
   "Face for action keys.")
 
-(defface chronos-action-disabled-face
+(defface span-action-disabled-face
   '((t :inherit font-lock-comment-face :strike-through nil))
   "Face for disabled actions.")
 
-(defface chronos-state-pre-start-face
+(defface span-state-pre-start-face
   '((t :inherit font-lock-comment-face))
   "Face for pre-start state.")
 
-(defface chronos-state-active-face
+(defface span-state-active-face
   '((t :inherit success))
   "Face for active state.")
 
-(defface chronos-state-interrupted-face
+(defface span-state-interrupted-face
   '((t :inherit warning))
   "Face for interrupted state.")
 
-(defface chronos-state-finished-face
+(defface span-state-finished-face
   '((t :inherit font-lock-doc-face))
   "Face for finished state.")
 
-(eli-defimplementation chronos-renderer chronos-buffer-renderer
+(eli-defimplementation span-renderer span-buffer-renderer
   "Buffer-based renderer implementation."
-  :slots ((buffer-name :initarg :buffer-name :initform "*Org-Chronos*")
+  :slots ((buffer-name :initarg :buffer-name :initform "*Span*")
           (app-state :initarg :app-state))
 
   (render (view-model)
@@ -65,13 +65,13 @@
           (inhibit-read-only t))
       (with-current-buffer buf
         (erase-buffer)
-        (chronos--render-header view-model)
-        (chronos--render-status view-model)
-        (chronos--render-actions view-model)
-        (chronos--render-timeline view-model)
+        (span--render-header view-model)
+        (span--render-status view-model)
+        (span--render-actions view-model)
+        (span--render-timeline view-model)
         (goto-char (point-min))
-        (chronos-mode)
-        (setq-local chronos--app-state (oref self app-state)))
+        (span-mode)
+        (setq-local span--app-state (oref self app-state)))
       buf))
 
   (get-buffer ()
@@ -79,31 +79,31 @@
 
   (refresh ()
     (when (oref self app-state)
-      (chronos-renderer/render
+      (span-renderer/render
        self
-       (chronos-app-state/get-view-model (oref self app-state))))))
+       (span-app-state/get-view-model (oref self app-state))))))
 
-(defun chronos--render-header (vm)
+(defun span--render-header (vm)
   "Render header section from view model VM."
   (insert (propertize "══════════════════════════════════════════\n"
-                      'face 'chronos-header-face))
-  (insert (propertize "              ORG-CHRONOS\n"
-                      'face '(:inherit chronos-header-face :height 1.5)))
+                      'face 'span-header-face))
+  (insert (propertize "              SPAN_ID\n"
+                      'face '(:inherit span-header-face :height 1.5)))
   (insert (propertize "══════════════════════════════════════════\n\n"
-                      'face 'chronos-header-face))
+                      'face 'span-header-face))
   (insert (propertize (format-time-string "  %A, %B %d, %Y\n\n"
-                                          (chronos-view-model-date vm))
+                                          (span-view-model-date vm))
                       'face 'font-lock-doc-face)))
 
-(defun chronos--render-status (vm)
+(defun span--render-status (vm)
   "Render status section from view model VM."
-  (let* ((state (chronos-view-model-state vm))
-         (active (chronos-view-model-active vm))
+  (let* ((state (span-view-model-state vm))
+         (active (span-view-model-active vm))
          (state-face (pcase state
-                       ('pre-start 'chronos-state-pre-start-face)
-                       ('active 'chronos-state-active-face)
-                       ('interrupted 'chronos-state-interrupted-face)
-                       ('finished 'chronos-state-finished-face)))
+                       ('pre-start 'span-state-pre-start-face)
+                       ('active 'span-state-active-face)
+                       ('interrupted 'span-state-interrupted-face)
+                       ('finished 'span-state-finished-face)))
          (state-text (pcase state
                        ('pre-start "Ready to Start")
                        ('active "Active")
@@ -113,18 +113,18 @@
     (insert (propertize state-text 'face state-face))
     (insert "\n")
     (when active
-      (let* ((elapsed (- (float-time) (chronos-interval-start active)))
+      (let* ((elapsed (- (float-time) (span-interval-start active)))
              (hours (floor (/ elapsed 3600)))
              (mins (floor (/ (mod elapsed 3600) 60))))
         (insert (format "  Current: %s (%dh %dm)\n"
-                        (propertize (or (chronos-interval-title active) "Unknown")
-                                    'face 'chronos-active-face)
+                        (propertize (or (span-interval-title active) "Unknown")
+                                    'face 'span-active-face)
                         hours mins))))
     (insert "\n")))
 
-(defun chronos--render-actions (vm)
+(defun span--render-actions (vm)
   "Render action strip from view model VM, wrapping to fit window width."
-  (let* ((actions (chronos-view-model-available-actions vm))
+  (let* ((actions (span-view-model-available-actions vm))
          (indent "  ")
          (max-width (- (window-width) 4))  ; leave some margin
          (col (length indent)))
@@ -145,51 +145,51 @@
         
         (if enabled
             (progn
-              (insert (propertize key-str 'face 'chronos-action-key-face))
+              (insert (propertize key-str 'face 'span-action-key-face))
               (insert label-str))
-          (insert (propertize (concat key-str label-str) 'face 'chronos-action-disabled-face)))
+          (insert (propertize (concat key-str label-str) 'face 'span-action-disabled-face)))
         
         (insert "  ")
         (setq col (+ col entry-len))))
     (insert "\n\n")))
 
-(defun chronos--render-timeline (vm)
+(defun span--render-timeline (vm)
   "Render timeline section from view model VM."
   (insert (propertize "  --------------- Timeline ---------------\n\n"
                       'face 'font-lock-comment-face))
-  (let* ((intervals (chronos-view-model-intervals vm))
-         (gaps (chronos-view-model-gaps vm))
-         (active (chronos-view-model-active vm))
+  (let* ((intervals (span-view-model-intervals vm))
+         (gaps (span-view-model-gaps vm))
+         (active (span-view-model-active vm))
          (timeline (sort (append intervals gaps (when active (list active)))
                          (lambda (a b)
-                           (< (chronos-interval-start a)
-                              (chronos-interval-start b)))))
-         (selected-row (chronos-view-model-selected-row vm))
+                           (< (span-interval-start a)
+                              (span-interval-start b)))))
+         (selected-row (span-view-model-selected-row vm))
          (row 0))
     (if (null timeline)
         (insert (propertize "    No events recorded yet.\n" 'face 'font-lock-comment-face))
       (dolist (interval timeline)
         (let* ((is-selected (= row selected-row))
-               (is-gap (eq (chronos-interval-type interval) 'gap))
-               (is-active (eq (chronos-interval-type interval) 'active))
+               (is-gap (eq (span-interval-type interval) 'gap))
+               (is-active (eq (span-interval-type interval) 'active))
                (start-str (format-time-string "%H:%M"
-                                              (seconds-to-time (chronos-interval-start interval))))
-               (end-str (if (chronos-interval-end interval)
+                                              (seconds-to-time (span-interval-start interval))))
+               (end-str (if (span-interval-end interval)
                             (format-time-string "%H:%M"
-                                                (seconds-to-time (chronos-interval-end interval)))
+                                                (seconds-to-time (span-interval-end interval)))
                           " now "))
-               (title (or (chronos-interval-title interval) ""))
-               (face (cond (is-gap 'chronos-gap-face)
-                           (is-active 'chronos-active-face)
-                           (t 'chronos-task-face)))
+               (title (or (span-interval-title interval) ""))
+               (face (cond (is-gap 'span-gap-face)
+                           (is-active 'span-active-face)
+                           (t 'span-task-face)))
                (line (format "    %s - %s   %s"
                              start-str end-str
                              (propertize title 'face face))))
           (when is-selected
-            (setq line (propertize line 'face 'chronos-selected-face)))
+            (setq line (propertize line 'face 'span-selected-face)))
           (insert line)
           (insert "\n")
           (setq row (1+ row)))))))
 
-(provide 'org-chronos-renderer)
-;;; org-chronos-renderer.el ends here
+(provide 'span-renderer)
+;;; span-renderer.el ends here

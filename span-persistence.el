@@ -1,24 +1,24 @@
-;;; org-chronos-persistence.el --- Persistence layer for Org-Chronos -*- lexical-binding: t; -*-
+;;; span-persistence.el --- Persistence layer for Span -*- lexical-binding: t; -*-
 
 ;;; Commentary:
-;; File-based storage implementation for Org-Chronos.
+;; File-based storage implementation for Span.
 
 ;;; Code:
 
-(require 'org-chronos-interfaces)
+(require 'span-interfaces)
 
 ;;; ============================================================================
 ;;; Storage Implementation - File-based
 ;;; ============================================================================
 
-(eli-defimplementation chronos-storage chronos-file-storage
+(eli-defimplementation span-storage span-file-storage
   "File-based storage implementation."
   :slots ((directory :initarg :directory :initform nil))
 
 
   (read-events (date)
-    (let* ((dir (or (oref self directory) chronos-log-directory))
-           (file (chronos--date-to-filename dir date)))
+    (let* ((dir (or (oref self directory) span-log-directory))
+           (file (span--date-to-filename dir date)))
       (when (file-exists-p file)
         (with-temp-buffer
           (insert-file-contents file)
@@ -28,44 +28,44 @@
               (condition-case nil
                   (let ((sexp (read (current-buffer))))
                     (when (and sexp (listp sexp))
-                      (push (chronos--sexp-to-event sexp) events)))
+                      (push (span--sexp-to-event sexp) events)))
                 (error (forward-line 1))))
             (nreverse events))))))
 
   (write-events (date events)
-    (let* ((dir (or (oref self directory) chronos-log-directory))
-           (file (chronos--date-to-filename dir date)))
+    (let* ((dir (or (oref self directory) span-log-directory))
+           (file (span--date-to-filename dir date)))
       (unless (file-directory-p dir)
         (make-directory dir t))
       (with-temp-file file
         (dolist (event events)
-          (insert (chronos--event-to-sexp-string event) "\n")))))
+          (insert (span--event-to-sexp-string event) "\n")))))
 
   (events-exist-p (date)
-    (let* ((dir (or (oref self directory) chronos-log-directory))
-           (file (chronos--date-to-filename dir date)))
+    (let* ((dir (or (oref self directory) span-log-directory))
+           (file (span--date-to-filename dir date)))
       (file-exists-p file))))
 
 ;; Storage helpers
-(defun chronos--date-to-filename (dir date)
+(defun span--date-to-filename (dir date)
   "Convert DIR and DATE to a log filename."
   (expand-file-name (format-time-string "%Y-%m-%d.log" date) dir))
 
-(defun chronos--event-to-sexp-string (event)
+(defun span--event-to-sexp-string (event)
   "Convert EVENT to an S-expression string."
   (format "(:id %S :time %f :type %s :payload %S)"
-          (chronos-event-id event)
-          (chronos-event-time event)
-          (chronos-event-type event)
-          (chronos-event-payload event)))
+          (span-event-id event)
+          (span-event-time event)
+          (span-event-type event)
+          (span-event-payload event)))
 
-(defun chronos--sexp-to-event (sexp)
-  "Convert SEXP to a chronos-event."
-  (chronos-event-create
+(defun span--sexp-to-event (sexp)
+  "Convert SEXP to a span-event."
+  (span-event-create
    :id (plist-get sexp :id)
    :time (plist-get sexp :time)
    :type (plist-get sexp :type)
    :payload (plist-get sexp :payload)))
 
-(provide 'org-chronos-persistence)
-;;; org-chronos-persistence.el ends here
+(provide 'span-persistence)
+;;; span-persistence.el ends here

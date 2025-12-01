@@ -1,45 +1,45 @@
-;;; org-chronos-app-state.el --- Application State for Org-Chronos -*- lexical-binding: t; -*-
+;;; span-app-state.el --- Application State for Span -*- lexical-binding: t; -*-
 
 ;;; Commentary:
 ;; Application state management and business logic.
 
 ;;; Code:
 
-(require 'org-chronos-interfaces)
+(require 'span-interfaces)
 
 ;;; ============================================================================
 ;;; Application State Implementation
 ;;; ============================================================================
 
-(eli-defimplementation chronos-app-state chronos-default-app-state
+(eli-defimplementation span-app-state span-default-app-state
   "Default application state implementation."
   :slots ((event-log :initarg :event-log)
           (selected-row :initform 0))
 
   (get-date ()
-    (chronos-event-log/get-date (oref self event-log)))
+    (span-event-log/get-date (oref self event-log)))
 
   (next-date ()
-    (let* ((current (chronos-event-log/get-date (oref self event-log)))
+    (let* ((current (span-event-log/get-date (oref self event-log)))
            (next (time-add current (* 24 60 60))))
-      (chronos-event-log/set-date (oref self event-log) next)
+      (span-event-log/set-date (oref self event-log) next)
       (oset self selected-row 0)))
 
   (prev-date ()
-    (let* ((current (chronos-event-log/get-date (oref self event-log)))
+    (let* ((current (span-event-log/get-date (oref self event-log)))
            (prev (time-subtract current (* 24 60 60))))
-      (chronos-event-log/set-date (oref self event-log) prev)
+      (span-event-log/set-date (oref self event-log) prev)
       (oset self selected-row 0)))
 
   (goto-date (date)
-    (chronos-event-log/set-date (oref self event-log) date)
+    (span-event-log/set-date (oref self event-log) date)
     (oset self selected-row 0))
 
   (get-selected-row ()
     (oref self selected-row))
 
   (next-row ()
-    (let* ((timeline (chronos--get-timeline (oref self event-log)))
+    (let* ((timeline (span--get-timeline (oref self event-log)))
            (max-row (max 0 (1- (length timeline)))))
       (oset self selected-row (min max-row (1+ (oref self selected-row))))))
 
@@ -47,15 +47,15 @@
     (oset self selected-row (max 0 (1- (oref self selected-row)))))
 
   (select-row (index)
-    (let* ((timeline (chronos--get-timeline (oref self event-log)))
+    (let* ((timeline (span--get-timeline (oref self event-log)))
            (max-row (max 0 (1- (length timeline)))))
       (oset self selected-row (max 0 (min max-row index)))))
 
   (get-available-actions ()
-    (let* ((day-state (chronos-event-log/get-day-state (oref self event-log)))
-           (selected (chronos--get-selected-interval self))
-           (is-gap (and selected (eq (chronos-interval-type selected) 'gap)))
-           (is-task (and selected (memq (chronos-interval-type selected) '(task active)))))
+    (let* ((day-state (span-event-log/get-day-state (oref self event-log)))
+           (selected (span--get-selected-interval self))
+           (is-gap (and selected (eq (span-interval-type selected) 'gap)))
+           (is-task (and selected (memq (span-interval-type selected) '(task active)))))
       (list
        (list :key "s" :action 'start-day :label "Start Day"
              :enabled (eq day-state 'pre-start))
@@ -86,101 +86,101 @@
       (pcase action
         ('start-day
          (let ((time (if args (float-time (car args)) (float-time))))
-           (chronos-event-log/add-event
-            log (chronos-event-create :type :day-start :time time))))
+           (span-event-log/add-event
+            log (span-event-create :type :day-start :time time))))
         ('clock-in
          (let ((title (or (car args)
                         (read-string "Task: ")))
                (task-id (cadr args)))
-           (chronos-event-log/add-event
-            log (chronos-event-create
+           (span-event-log/add-event
+            log (span-event-create
                  :type :ctx-switch
                  :payload (append (list :title title)
                             (when task-id (list :task-id task-id)))))))
         ('clock-out
-         (chronos-event-log/add-event
-          log (chronos-event-create :type :stop)))
+         (span-event-log/add-event
+          log (span-event-create :type :stop)))
         ('interrupt
-         (chronos-event-log/add-event
-          log (chronos-event-create :type :interruption)))
+         (span-event-log/add-event
+          log (span-event-create :type :interruption)))
         ('tick
-         (chronos-event-log/add-event
-          log (chronos-event-create :type :tick)))
+         (span-event-log/add-event
+          log (span-event-create :type :tick)))
         ('next-date
-         (chronos-app-state/next-date self))
+         (span-app-state/next-date self))
         ('prev-date
-         (chronos-app-state/prev-date self))
+         (span-app-state/prev-date self))
         ('goto-date
          (let ((date (org-read-date nil t nil "Go to date: ")))
-           (chronos-app-state/goto-date self date)))
+           (span-app-state/goto-date self date)))
         ('refresh
-         (chronos-app-state/refresh self))
+         (span-app-state/refresh self))
         ('fill-gap
-         (let* ((selected (chronos--get-selected-interval self))
+         (let* ((selected (span--get-selected-interval self))
                 (title (or (car args) (read-string "Task for gap: "))))
-           (when (and selected (eq (chronos-interval-type selected) 'gap))
-             (chronos-event-log/add-event
-              log (chronos-event-create
+           (when (and selected (eq (span-interval-type selected) 'gap))
+             (span-event-log/add-event
+              log (span-event-create
                    :type :ctx-switch
-                   :time (chronos-interval-start selected)
+                   :time (span-interval-start selected)
                    :payload (list :title title))))))
         ('delete-interval
-         (let ((selected (chronos--get-selected-interval self)))
-           (when (and selected (chronos-interval-event-id selected))
-             (chronos-event-log/remove-event
-              log (chronos-interval-event-id selected)))))
+         (let ((selected (span--get-selected-interval self)))
+           (when (and selected (span-interval-event-id selected))
+             (span-event-log/remove-event
+              log (span-interval-event-id selected)))))
         ('edit-time
-         (let* ((selected (chronos--get-selected-interval self))
-                (event-id (and selected (chronos-interval-event-id selected))))
+         (let* ((selected (span--get-selected-interval self))
+                (event-id (and selected (span-interval-event-id selected))))
            (when event-id
-             (let* ((events (chronos-event-log/get-events log))
+             (let* ((events (span-event-log/get-events log))
                     (event (cl-find-if (lambda (e)
-                                         (equal (chronos-event-id e) event-id))
+                                         (equal (span-event-id e) event-id))
                              events))
                     (new-time (org-read-date t t nil "New time: "
-                                             (seconds-to-time (chronos-event-time event)))))
+                                             (seconds-to-time (span-event-time event)))))
                (when event
-                 (chronos-event-log/update-event
+                 (span-event-log/update-event
                   log event-id
-                  (chronos-event-create
+                  (span-event-create
                    :id event-id
                    :time (float-time new-time)
-                   :type (chronos-event-type event)
-                   :payload (chronos-event-payload event))))))))
+                   :type (span-event-type event)
+                   :payload (span-event-payload event))))))))
         ('quit
          (quit-window))
         (_ nil))))
 
   (get-view-model ()
     (let ((log (oref self event-log)))
-      (chronos-view-model-create
-       :date (chronos-event-log/get-date log)
-       :state (chronos-event-log/get-day-state log)
-       :intervals (chronos-event-log/get-intervals log)
-       :active (chronos-event-log/get-active log)
-       :gaps (chronos-event-log/get-gaps log)
+      (span-view-model-create
+       :date (span-event-log/get-date log)
+       :state (span-event-log/get-day-state log)
+       :intervals (span-event-log/get-intervals log)
+       :active (span-event-log/get-active log)
+       :gaps (span-event-log/get-gaps log)
        :selected-row (oref self selected-row)
-       :available-actions (chronos-app-state/get-available-actions self))))
+       :available-actions (span-app-state/get-available-actions self))))
 
   (refresh ()
-    (let ((date (chronos-event-log/get-date (oref self event-log))))
-      (chronos-event-log/set-date (oref self event-log) date))))
+    (let ((date (span-event-log/get-date (oref self event-log))))
+      (span-event-log/set-date (oref self event-log) date))))
 
-(defun chronos--get-timeline (event-log)
+(defun span--get-timeline (event-log)
   "Get combined timeline (intervals + gaps) from EVENT-LOG."
-  (let ((intervals (chronos-event-log/get-intervals event-log))
-        (gaps (chronos-event-log/get-gaps event-log))
-        (active (chronos-event-log/get-active event-log)))
+  (let ((intervals (span-event-log/get-intervals event-log))
+        (gaps (span-event-log/get-gaps event-log))
+        (active (span-event-log/get-active event-log)))
     (sort (append intervals gaps (when active (list active)))
           (lambda (a b)
-            (< (chronos-interval-start a) (chronos-interval-start b))))))
+            (< (span-interval-start a) (span-interval-start b))))))
 
-(defun chronos--get-selected-interval (app-state)
+(defun span--get-selected-interval (app-state)
   "Get the currently selected interval from APP-STATE."
   (let* ((log (oref app-state event-log))
-         (timeline (chronos--get-timeline log))
+         (timeline (span--get-timeline log))
          (idx (oref app-state selected-row)))
     (nth idx timeline)))
 
-(provide 'org-chronos-app-state)
-;;; org-chronos-app-state.el ends here
+(provide 'span-app-state)
+;;; span-app-state.el ends here

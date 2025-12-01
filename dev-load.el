@@ -10,17 +10,17 @@
       (load eli-file nil t)
       (message "Loaded eli.el")))
 
-  ;; Force reload org-chronos components in order
-  (dolist (file '("org-chronos-interfaces.el"
-                  "org-chronos-persistence.el"
-                  "org-chronos-event-log.el"
-                  "org-chronos-app-state.el"
-                  "org-chronos-renderer.el"
-                  "org-chronos-task-linker.el"
-                  "org-chronos.el"))
+  ;; Force reload span components in order
+  (dolist (file '("span-interfaces.el"
+                  "span-persistence.el"
+                  "span-event-log.el"
+                  "span-app-state.el"
+                  "span-renderer.el"
+                  "span-task-linker.el"
+                  "span.el"))
     (let ((path (expand-file-name file dir)))
       (when (file-exists-p path)
         (load path nil t)
         (message "Loaded %s" file))))
 
-  (message "Org-Chronos development environment reloaded from %s" dir))
+  (message "Span development environment reloaded from %s" dir))

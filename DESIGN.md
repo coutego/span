@@ -1,4 +1,4 @@
-# Org-Chronos State Machine & Interaction Design
+# Span State Machine & Interaction Design
 
 ## 1. System States (Global)
 
